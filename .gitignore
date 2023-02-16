@@ -1,2 +1,3 @@
 scenario
 *.pdf
+__pycache__
