@@ -80,13 +80,13 @@ def parsefile(f):
         printint(district, hp)
 
     # Officer Data+
-    # Family Name, Given Name, Portrait id, Sex, Available Date, Birth Date, Death Date, _, Sarents, _, Spouse, Sworn Brother, Compatibility Score, Liked Officers
-    officerdata = parsedata(f, 28003, [12, 41, 2, 1, 2, 2, 2, 3, 4, 1, 2, 2, 1, 10, 10, 1, 2, 2,
+    # Family Name, Given Name, Portrait id, Sex, Available Date, Birth Date, Death Date, _, Father, Mother, _, Spouse, Sworn Brother, Compatibility Score, Liked Officers
+    officerdata = parsedata(f, 28003, [12, 41, 2, 1, 2, 2, 2, 3, 2, 2, 1, 2, 2, 1, 10, 10, 1, 2, 2,
                             1, 1, 2, 1, 2, 6, 5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1, 1, 5, 1, 1, 2, 1], 850)
     for officerid, officer in enumerate(officerdata):
         print(officerid)
         officerfamilyname, officergivenname, officerportrait, officersex, officeravailabledate, officerbirthdate, \
-            officerdeathdate, _, officerparents, _, officerspouse, officerswornbrother, officercompatibility, \
+            officerdeathdate, _, officerfather, officermother, _, officerspouse, officerswornbrother, officercompatibility, \
             officerlikedofficers, officerdislikedofficers, officerallegiance, officerlocation, officerservice, \
             officerstatus, officerrank, _, officerloyalty, officerdeeds, officeraffinities, officerstats, officergrowth, _, \
             officerskill, officerdebatestyle, officerloyaltylevel, officerambition, officeruse, officercharacter, officervoice, \
@@ -96,9 +96,10 @@ def parsefile(f):
         printint(officerportrait)
         printint(officersex)
         printint(officeravailabledate, officerbirthdate, officerdeathdate)
-        printint(*sliced(officerparents, 2))
-        printint(officerspouse)
-        printint(officerswornbrother)
+        print(officer_map[parseint(officerfather)], officerfather)
+        print(officer_map[parseint(officermother)], officermother)
+        print(officer_map[parseint(officerspouse)], officerspouse)
+        print(officer_map[parseint(officerswornbrother)], officerswornbrother)
         printint(officercompatibility)
         printint(*sliced(officerlikedofficers, 2))
         printint(*sliced(officerdislikedofficers, 2))
@@ -193,6 +194,14 @@ def parsefile(f):
         printint(will)
         print()
 
+    countrydata = parsedata(f, 170457, [17, 80, 6], 42)
+    for countryid, country in enumerate(countrydata):
+        countryname, countrydesc, _ = country
+        print(countryid)
+        printstr(countryname)
+        printstr(countrydesc)
+        print()
+
 
 def main():
     # for filename in glob.glob("scenario/SCEN*"):
@@ -200,7 +209,7 @@ def main():
     #     scenfile = open(filename, 'rb')
     #     parsefile(scenfile)
 
-    scenfile = open('scenario/SCEN006.S11', 'rb')
+    scenfile = open('scenario/SCEN002.S11', 'rb')
     parsefile(scenfile)
 
 
