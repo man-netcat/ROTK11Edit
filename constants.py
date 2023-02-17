@@ -98,6 +98,7 @@ city_map = {
     0x54: "Dong Tine",
     0x55: "Gong An",
     0x56: "Wu Xian",
+    0xFF: "Not Available",
     0xFFFF: "Not Available",
 }
 
@@ -413,4 +414,16 @@ campaign_map = {
     0x00: "Countryside",
     0x01: "Impromptu Strategy",
     0x02: "Sea is Home"
+}
+
+item_type_map = {
+    0x00: "Elite Horse",
+    0x01: "Sword",
+    0x02: "Long Spear",
+    0x03: "Throwing Knife",
+    0x04: "Bow",
+    0x05: "Writings",
+    0x06: "Imperial Seal",
+    0x07: "Bronze Pheasant",
+    0xFF: "Not Available",
 }

@@ -131,22 +131,29 @@ def parsefile(f):
         printint(officerdebateability)
         print()
 
-    # # Item Data
-    # itemdata = parsedata(f, 157203, 34, 50)
-    # print(itemdata)
+    # Item Data
+    itemdata = parsedata(f, 157203, [27, 1, 1, 1, 2, 1, 1], 50)
+    for itemid, item in enumerate(itemdata):
+        print(itemid)
+        itemname, itemtype, itemloyalty, itempicture, itemowner, itemcity, itemowned = item
+        printstr(itemname)
+        print(item_type_map[parseint(itemtype)])
+        printint(itemloyalty, itempicture, itemowner, itemowned)
+        print(city_map[parseint(itemcity)])
+        print()
 
-    # # Force Data
+    # Force Data
     # forcedata = parsedata(f, 160603, 68, 28)
     # print(forcedata)
 
 
 def main():
-    for filename in glob.glob("scenario/SCEN*"):
-        scenfile = open(filename, 'rb')
-        parsefile(scenfile)
+    # for filename in glob.glob("scenario/SCEN*"):
+    #     scenfile = open(filename, 'rb')
+    #     parsefile(scenfile)
 
-    # scenfile = open('scenario/SCEN000.S11', 'rb')
-    # parsefile(scenfile)
+    scenfile = open('scenario/SCEN000.S11', 'rb')
+    parsefile(scenfile)
 
 
 if __name__ == '__main__':
