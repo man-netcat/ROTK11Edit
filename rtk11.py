@@ -1,5 +1,6 @@
 import glob
 from constants import *
+import string
 
 
 def sliced(bytes, n):
@@ -11,7 +12,7 @@ def parseint(bytes):
 
 
 def parsestr(bytes):
-    return bytes.decode('utf-8').replace('\x00', '')
+    return ''.join([c for c in bytes.decode('utf-8') if c.isalnum() or c.isspace() or c in string.punctuation])
 
 
 def printint(*bytestrings):
@@ -143,16 +144,63 @@ def parsefile(f):
         print()
 
     # Force Data
-    # forcedata = parsedata(f, 160603, 68, 28)
-    # print(forcedata)
+    forcedata = parsedata(f, 160603, [2, 2, 42, 5, 1, 1, 1, 2, 8, 4], 42)
+    for forceid, force in enumerate(forcedata):
+        print(forceid)
+        forceleader, forcestrategist, forcerelationships, _, forcetitle, forcecountry, forcecolour, _, forcealliances, forcetechniques = force
+        printint(forceleader, forcestrategist)
+        print(*[parseint(forcerelationship)
+              for forcerelationship in sliced(forcerelationships, 1)])
+        print(title_map[parseint(forcetitle)])
+        print(country_map[parseint(forcecountry)])
+        print(hex(colour_map[parseint(forcecolour)]))
+        printint(forcealliances)
+
+        # Pikes, Spears, Horses, Bows, Invention, Command, Fire, Defense
+        print(forcetechniques.hex())
+        print()
+
+    # Force Data (when starting a game)
+    forcedatamainmenu = parsedata(f, 163799, [1, 1, 2, 1, 3], 42)
+    for forceid, force in enumerate(forcedatamainmenu):
+        print(forceid)
+        forcecolour, forcedistrictnumber, forceruler, forcebehaviour, _ = force
+        print(colour_map[parseint(forcecolour)])
+        printint(forcedistrictnumber)
+        printint(forceruler)
+        printint(forcebehaviour)
+        print()
+
+    citydata = parsedata(f, 164256,
+                         [5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 6, 2, 14, 2, 7, 1, 2, 2, 2, 1, 1, 6], 42)
+    for cityid, city in enumerate(citydata):
+        _, troops, _, gold, _, food, _, spears, _, pikes, _, bows, _, horses, _, rams, _, towers, _, boats, _, marketrate, revenue, harvest, maxhp, will, order, specialty = city
+        print(cityid)
+        printint(troops, gold, food, spears, pikes,
+                 bows, horses, rams, towers, boats)
+        printint(marketrate, revenue, harvest, maxhp, will, order)
+        print(specialty.hex())
+        print()
+
+    gateportdata = parsedata(f, 167577,
+                             [1, 2, 2, 2, 2, 2, 6, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 14, 2, 6, 1, 2], 45)
+    for gateportid, gateport in enumerate(gateportdata):
+        ownership, troops, _, gold, _, food, _, spears, _, pikes, _, bows, _, horses, _, rams, _, towers, _, boats, _, will, _ = gateport
+        print(gateportid)
+        printint(ownership)
+        printint(troops, gold, food, spears, pikes,
+                 bows, horses, rams, towers, boats)
+        printint(will)
+        print()
 
 
 def main():
     # for filename in glob.glob("scenario/SCEN*"):
+    #     print(filename)
     #     scenfile = open(filename, 'rb')
     #     parsefile(scenfile)
 
-    scenfile = open('scenario/SCEN000.S11', 'rb')
+    scenfile = open('scenario/SCEN006.S11', 'rb')
     parsefile(scenfile)
 
 
