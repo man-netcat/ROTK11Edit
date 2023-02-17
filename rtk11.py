@@ -22,17 +22,17 @@ def parsefile(f):
     year, _, month, _ = parsedata(f, 91, 4)
     print(year, month)
 
-    # Scenario Name.
+    # Scenario Name
     # 95;26
     scenname = parsedata(f, 95, 26).decode()
     print(scenname)
 
-    # Scenario Description.
+    # Scenario Description
     # 121;600
     scendesc = parsedata(f, 121, 600).decode()
     print(scendesc)
 
-    # Force Colours.
+    # Force Colours
     # 722;42
     f.seek(722)
     data = parsedata(f, 722, 42)
@@ -42,7 +42,7 @@ def parsefile(f):
     ]
     print(colours)
 
-    # Force Descriptions.
+    # Force Descriptions
     # 933;607x42
     forcedescs = parsedata(f, 933, 607, 42)
     for forcedesc in forcedescs:
@@ -53,7 +53,7 @@ def parsefile(f):
     year, _, month, _ = parsedata(f, 26427, 4)
     print(year, month)
 
-    # District code + Max HP of cities.
+    # District code + Max HP of cities
     # Max HP is 2 bytes in little endian
     # 15 Unknown bytes left
     # 26438;(1+2)x86~15
@@ -62,7 +62,7 @@ def parsefile(f):
         hp = int.from_bytes(hpdata, "little")
         print(d, hp)
 
-    # Officer Data.
+    # Officer Data
     # 28003;152x850
     officerdata = parsedata(f, 28003, 152, 850)
     print(officerdata)
@@ -71,6 +71,11 @@ def parsefile(f):
     # 157203;34x50
     itemdata = parsedata(f, 157203, 34, 50)
     print(itemdata)
+
+    # Force Data
+    # 160603;68x20
+    forcedata = parsedata(f, 160603, 68, 28)
+    print(forcedata)
 
 
 def main():
