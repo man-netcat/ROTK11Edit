@@ -1,3 +1,4 @@
+import glob
 from constants import *
 
 
@@ -38,9 +39,22 @@ def parsefile(f):
     year, _, month, _ = f.read(4)
     print(year, month)
 
+    # 26438;(1+2)x86 District code + Max HP of cities.
+    # Max HP is 2 bytes in little endian
+    # 15 Unknown bytes left
+    f.seek(26438)
+    for i in range(86):
+        district = f.read(1)
+        maxhp = int.from_bytes(f.read(2), "little")
+        print(district, maxhp)
+        f.read(15)
+
 
 def main():
     # for filename in glob.glob("scenario/SCEN*"):
+    #     scenfile = open(filename, 'rb')
+    #     parsefile(scenfile)
+
     scenfile = open('scenario/SCEN000.S11', 'rb')
     parsefile(scenfile)
 
