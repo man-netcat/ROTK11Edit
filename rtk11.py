@@ -2,6 +2,10 @@ import glob
 from constants import *
 
 
+def sliced(bytes, n):
+    return [bytes[i:i+n] for i in range(0, len(bytes), n)]
+
+
 def parseint(bytes):
     return int.from_bytes(bytes, "little")
 
@@ -10,7 +14,19 @@ def parsestr(bytes):
     return bytes.decode('utf-8').replace('\x00', '')
 
 
-def parsedata(f, offset, lengths, repetitions=1, excess=0):
+def printints(*bytestrings):
+    for bytes in bytestrings:
+        print(parseint(bytes), end=' ')
+    print()
+
+
+def printstrs(*bytestrings):
+    for bytes in bytestrings:
+        print(parsestr(bytes), end=' ')
+    print()
+
+
+def parsedata(f, offset, lengths, repetitions=1):
     def helper():
         if type(lengths) == int:
             data = f.read(lengths)
@@ -22,30 +38,26 @@ def parsedata(f, offset, lengths, repetitions=1, excess=0):
     if repetitions == 1:
         return helper()
     else:
-        datas = []
-        for _ in range(repetitions):
-            datas.append(helper())
-            f.read(excess)
-        return datas
+        return [helper() for _ in range(repetitions)]
 
 
 def parsefile(f):
-    # Attributes are marked as [OFFSET];[LENGTH]x[REPETITION]~[EXCESS]
+    # Attributes are marked as [OFFSET];[LENGTH]x[REPETITION]
 
     # YEAR-00-MONTH-01 (Displayed Starting Date)
     # 91;1,1,1,1
     year, _, month, _ = parsedata(f, 91, [1, 1, 1, 1])
-    print(parseint(year), parseint(month))
+    printints(year, month)
 
     # Scenario Name
     # 95;26
     scenname = parsedata(f, 95, 26)
-    print(parsestr(scenname))
+    printstrs(scenname)
 
     # Scenario Description
     # 121;600
     scendesc = parsedata(f, 121, 600)
-    print(parsestr(scendesc))
+    printstrs(scendesc)
 
     # Force Colours
     # 722;1x42
@@ -56,48 +68,41 @@ def parsefile(f):
     # Force Descriptions
     # 933;607x42
     forcedescs = parsedata(f, 933, 607, 42)
-    for forcedesc in forcedescs:
-        print(parsestr(forcedesc))
+    for forceid, forcedesc in enumerate(forcedescs):
+        print(forceid)
+        printstrs(forcedesc)
 
     # YEAR-00-MONTH-01 (In-Game Starting Date)
     # 26427;1,1,1,1
     year, _, month, _ = parsedata(f, 26427, [1, 1, 1, 1])
-    print(parseint(year), parseint(month))
+    printints(year, month)
 
     # District code + Max HP of cities
     # Max HP is 2 bytes in little endian
     # 15 Unknown bytes left
-    # 26438;1,2x86~15
-    districthp = parsedata(f, 26438, [1, 2], 86, 15)
-    for district, hp in districthp:
-        print(parseint(district), parseint(hp))
+    # 26438;1,2,15x86
+    districthp = parsedata(f, 26438, [1, 2, 15], 86)
+    for district, hp, _ in districthp:
+        printints(district, hp)
 
     # Officer Data
-    # Family Name, Given Name, Portrait id, Sex, Available Date, Birth Date, Death Date
-    # 28003;12,41,2,1,2,2,2,3,2,2,1,2,80x850
+    # Family Name, Given Name, Portrait id, Sex, Available Date, Birth Date, Death Date, _, Sarents, _, Spouse, Sworn Brother, Compatibility Score, Liked Officers
+    # 28003;12,41,2,1,2,2,2,3,4,1,2,80x850
     officerdata = parsedata(
-        f, 28003, [12, 41, 2, 1, 2, 2, 2, 3, 2, 2, 1, 2, 2, 1, 77], 850)
+        f, 28003, [12, 41, 2, 1, 2, 2, 2, 3, 4, 1, 2, 2, 1, 10, 10, 57], 850)
     for officerid, officer in enumerate(officerdata):
         print(officerid)
-        officerfamilyname, officergivenname, officerportrait, officersex, officeravailabledate, officerbirthdate, officerdeathdate, _, officerparent1, officerparent2, _, officerspouse, officerswornbrother, officercompatibility, _ = officer
-        print(
-            parsestr(officerfamilyname),
-            parsestr(officergivenname)
-        )
-        print(parseint(officerportrait))
-        print(parseint(officersex))
-        print(
-            parseint(officeravailabledate),
-            parseint(officerbirthdate),
-            parseint(officerdeathdate)
-        )
-        print(
-            parseint(officerparent1),
-            parseint(officerparent2)
-        )
-        print(parseint(officerspouse))
-        print(parseint(officerswornbrother))
-        print(parseint(officercompatibility))
+        officerfamilyname, officergivenname, officerportrait, officersex, officeravailabledate, officerbirthdate, officerdeathdate, _, officerparents, _, officerspouse, officerswornbrother, officercompatibility, officerlikedofficers, officerdislikedofficers, _ = officer
+        printstrs(officerfamilyname, officergivenname)
+        printints(officerportrait)
+        printints(officersex)
+        printints(officeravailabledate, officerbirthdate, officerdeathdate)
+        printints(*sliced(officerparents, 2))
+        printints(officerspouse)
+        printints(officerswornbrother)
+        printints(officercompatibility)
+        printints(*sliced(officerlikedofficers, 2))
+        printints(*sliced(officerdislikedofficers, 2))
         print()
 
     # Item Data
