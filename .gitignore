@@ -1,4 +1,5 @@
 scenario
+databases
 *.pdf
 __pycache__
 *.out

@@ -1,6 +1,9 @@
 import glob
 from constants import *
+from queries import *
 import string
+import sqlite3
+import os
 
 
 def sliced(bytes, n):
@@ -42,49 +45,73 @@ def parsedata(f, offset, lengths, repetitions=1):
         return [helper() for _ in range(repetitions)]
 
 
-def parsefile(f):
+def makedatabase(scenario_filename):
+    db_filename = scenario_filename \
+        .replace('scenario', 'databases') \
+        .replace('.S11', '.db')
+
+    if os.path.exists(db_filename):
+        os.remove(db_filename)
+
+    conn = sqlite3.connect(db_filename)
+
+    conn.execute(scenariocreatequery)
+    conn.execute(forcescreatequery)
+    conn.execute(officercreatequery)
+    conn.execute(itemscreatequery)
+
+
+def parsefile(scenario_filename):
+    f = open(scenario_filename, 'rb')
+    db_filename = scenario_filename \
+        .replace('scenario', 'databases') \
+        .replace('.S11', '.db')
+    # Create a connection to the database
+    conn = sqlite3.connect(db_filename)
+
     # Attributes are marked as [OFFSET];[LENGTH]x[REPETITION]
 
     # YEAR-00-MONTH-01 (Displayed Starting Date)
     year, _, month, _ = parsedata(f, 91, [1, 1, 1, 1])
-    printint(year, month)
 
     # Scenario Name
     scenname = parsedata(f, 95, 26)
-    printstr(scenname)
 
     # Scenario Description
     scendesc = parsedata(f, 121, 600)
-    printstr(scendesc)
+    scenariovalues = (
+        parsestr(scenname),
+        parsestr(scendesc),
+        parseint(year),
+        parseint(month)
+    )
 
-    # Force Colours
-    colourdata = parsedata(f, 722, 1, 42)
-    colours = [colour_map[parseint(byte)] for byte in colourdata]
-    print(colours)
+    conn.execute(scenarioinsertquery, scenariovalues)
 
-    # Force Descriptions
-    forcedescs = parsedata(f, 933, 607, 42)
-    for forceid, forcedesc in enumerate(forcedescs):
-        print(forceid)
-        printstr(forcedesc)
+    forcedata1 = parsedata(f, 932, [1, 606], 42)
+    forcedata2 = parsedata(f, 163799, [1, 1, 2, 1, 3], 42)
+    for forceid, (force1, force2) in enumerate(zip(forcedata1, forcedata2)):
+        forcedifficulty, forcedesc = force1
+        forcecolour, forcedistrictnumber, forceruler, forcebehaviour, _ = force2
+        forcesvalues = (
+            forceid,
+            parseint(forceruler),
+            parsestr(forcedesc),
+            parseint(forcecolour),
+            parseint(forcedistrictnumber),
+            parseint(forcedifficulty),
+            parseint(forcebehaviour)
+        )
+        conn.execute(forcesinsertquery, forcesvalues)
 
     # YEAR-00-MONTH-01 (In-Game Starting Date)
     year, _, month, _ = parsedata(f, 26427, [1, 1, 1, 1])
-    printint(year, month)
-
-    # District code + Max HP of cities
-    # Max HP is 2 bytes in little endian
-    # 15 Unknown bytes left
-    districthp = parsedata(f, 26438, [1, 2, 15], 86)
-    for district, hp, _ in districthp:
-        printint(district, hp)
 
     # Officer Data+
     # Family Name, Given Name, Portrait id, Sex, Available Date, Birth Date, Death Date, _, Father, Mother, _, Spouse, Sworn Brother, Compatibility Score, Liked Officers
     officerdata = parsedata(f, 28003, [12, 41, 2, 1, 2, 2, 2, 3, 2, 2, 1, 2, 2, 1, 10, 10, 1, 2, 2,
                             1, 1, 2, 1, 2, 6, 5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1, 1, 5, 1, 1, 2, 1], 850)
     for officerid, officer in enumerate(officerdata):
-        print(officerid)
         officerfamilyname, officergivenname, officerportrait, officersex, officeravailabledate, officerbirthdate, \
             officerdeathdate, _, officerfather, officermother, _, officerspouse, officerswornbrother, officercompatibility, \
             officerlikedofficers, officerdislikedofficers, officerallegiance, officerlocation, officerservice, \
@@ -92,57 +119,72 @@ def parsefile(f):
             officerskill, officerdebatestyle, officerloyaltylevel, officerambition, officeruse, officercharacter, officervoice, \
             officertone, officercourtimportance, officerstrategy, officercampaignstyle, officersexmodel, officermodel, \
             officerweaponmodel, officerhorsemodel, _, officerportraitage, officeraction, _, officerdebateability = officer
-        printstr(officerfamilyname, officergivenname)
-        printint(officerportrait)
-        printint(officersex)
-        printint(officeravailabledate, officerbirthdate, officerdeathdate)
-        print(officer_map[parseint(officerfather)], officerfather)
-        print(officer_map[parseint(officermother)], officermother)
-        print(officer_map[parseint(officerspouse)], officerspouse)
-        print(officer_map[parseint(officerswornbrother)], officerswornbrother)
-        printint(officercompatibility)
-        printint(*sliced(officerlikedofficers, 2))
-        printint(*sliced(officerdislikedofficers, 2))
-        print(
+        officervalues = (
+            officerid,
+            parsestr(officerfamilyname),
+            parsestr(officergivenname),
+            parseint(officerportrait),
+            parseint(officersex),
+            parseint(officeravailabledate),
+            parseint(officerbirthdate),
+            parseint(officerdeathdate),
+            # Values about 2000 are used to signify brotherly bonds whose father is not available in-game
+            parseint(officerfather),
+            parseint(officermother),
+            parseint(officerspouse),
+            parseint(officerswornbrother),
+            parseint(officercompatibility),
+            *[parseint(likedofficer)
+              for likedofficer in sliced(officerlikedofficers, 2)],
+            *[parseint(dislikedofficer)
+              for dislikedofficer in sliced(officerdislikedofficers, 2)],
             parseint(officerallegiance),
-            city_map[parseint(officerlocation)],
-            city_map[parseint(officerservice)]
+            parseint(officerlocation),
+            parseint(officerservice),
+            parseint(officerstatus),
+            parseint(officerrank),
+            parseint(officerloyalty),
+            parseint(officerdeeds),
+            *[affinity for affinity in officeraffinities],
+            *[stat for stat in officerstats],
+            *[growth for growth in officergrowth],
+            parseint(officerskill),
+            parseint(officerdebatestyle),
+            parseint(officerloyaltylevel),
+            parseint(officerambition),
+            parseint(officeruse),
+            parseint(officercharacter),
+            parseint(officervoice),
+            parseint(officertone),
+            parseint(officercourtimportance),
+            parseint(officerstrategy),
+            parseint(officercampaignstyle),
+            parseint(officersexmodel),
+            parseint(officermodel),
+            parseint(officerweaponmodel),
+            parseint(officerhorsemodel),
+            parseint(officerportraitage),
+            parseint(officeraction),
+            parseint(officerdebateability)
         )
-        print(officer_status_map[parseint(officerstatus)])
-        print(officer_ranks_map[parseint(officerrank)])
-        printint(officerloyalty)
-        printint(officerdeeds)
-        print(*[affinity_map[byte] for byte in officeraffinities])
-        printint(*sliced(officerstats, 1))
-        print(*[growth_ability_map[parseint(growth)]
-              for growth in sliced(officergrowth, 1)])
-        print(skill_map[parseint(officerskill)])
-        print(debate_map[parseint(officerdebatestyle)])
-        printint(officerloyaltylevel)
-        printint(officerambition)
-        print(use_map[parseint(officeruse)])
-        print(character_map[parseint(officercharacter)])
-        print(voice_map[parseint(officervoice)])
-        print(tone_map[parseint(officertone)])
-        print(court_importance_map[parseint(officercourtimportance)])
-        print(strategy_map[parseint(officerstrategy)])
-        print(campaign_map[parseint(officercampaignstyle)])
-        print(printint(officersexmodel, officermodel,
-              officerweaponmodel, officerhorsemodel, officerportraitage))
-        print(action_map[parseint(officeraction)])
-        printint(officerdebateability)
-        print()
+        conn.execute(officerinsertquery, officervalues)
 
     # Item Data
     itemdata = parsedata(f, 157203, [27, 1, 1, 1, 2, 1, 1], 50)
     for itemid, item in enumerate(itemdata):
         print(itemid)
         itemname, itemtype, itemloyalty, itempicture, itemowner, itemcity, itemowned = item
-        printstr(itemname)
-        print(item_type_map[parseint(itemtype)])
-        printint(itemloyalty, itempicture, itemowner, itemowned)
-        print(city_map[parseint(itemcity)])
-        print()
+        itemvalues = (
+            itemid,
+            parsestr(itemname),
+            parseint(itemtype),
+            parseint(itemloyalty),
+            parseint(itempicture),
+            parseint(itemowner),
+            parseint(itemcity),
+            parseint(itemowned)
+        )
+        conn.execute(itemsinsertquery, itemvalues)
 
     # Force Data
     forcedata = parsedata(f, 160603, [2, 2, 42, 5, 1, 1, 1, 2, 8, 4], 42)
@@ -161,17 +203,15 @@ def parsefile(f):
         print(forcetechniques.hex())
         print()
 
-    # Force Data (when starting a game)
-    forcedatamainmenu = parsedata(f, 163799, [1, 1, 2, 1, 3], 42)
-    for forceid, force in enumerate(forcedatamainmenu):
-        print(forceid)
-        forcecolour, forcedistrictnumber, forceruler, forcebehaviour, _ = force
-        print(colour_map[parseint(forcecolour)])
-        printint(forcedistrictnumber)
-        printint(forceruler)
-        printint(forcebehaviour)
-        print()
+    # District code + Max HP of cities
+    # Max HP is 2 bytes in little endian
+    # 15 Unknown bytes left
+    citydistricthp = parsedata(f, 26438, [1, 2, 15], 42)
+    for district, hp, _ in citydistricthp:
+        printint(district, hp)
 
+    citycolourdata = parsedata(f, 722, 1, 42)
+    citycolours = [parseint(byte) for byte in citycolourdata]
     citydata = parsedata(f, 164256,
                          [5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 6, 2, 14, 2, 7, 1, 2, 2, 2, 1, 1, 6], 42)
     for cityid, city in enumerate(citydata):
@@ -182,6 +222,10 @@ def parsefile(f):
         printint(marketrate, revenue, harvest, maxhp, will, order)
         print(specialty.hex())
         print()
+
+    citydistricthp = parsedata(f, 26438, [1, 2, 15], 45)
+    for district, hp, _ in citydistricthp:
+        printint(district, hp)
 
     gateportdata = parsedata(f, 167577,
                              [1, 2, 2, 2, 2, 2, 6, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 14, 2, 6, 1, 2], 45)
@@ -202,15 +246,17 @@ def parsefile(f):
         printstr(countrydesc)
         print()
 
+    conn.commit()
+
 
 def main():
-    # for filename in glob.glob("scenario/SCEN*"):
-    #     print(filename)
-    #     scenfile = open(filename, 'rb')
-    #     parsefile(scenfile)
+    for filename in glob.glob("scenario/SCEN*"):
+        makedatabase(filename)
+        parsefile(filename)
 
-    scenfile = open('scenario/SCEN002.S11', 'rb')
-    parsefile(scenfile)
+    # filename = 'scenario/SCEN000.S11'
+    # makedatabase(filename)
+    # parsefile(filename)
 
 
 if __name__ == '__main__':
