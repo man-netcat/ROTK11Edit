@@ -46,6 +46,9 @@ def parsedata(f, offset, lengths, repetitions=1):
 
 
 def makedatabase(scenario_filename):
+    if not os.path.exists('databases'):
+        os.mkdir('databases')
+
     db_filename = scenario_filename \
         .replace('scenario', 'databases') \
         .replace('.S11', '.db')
@@ -59,6 +62,7 @@ def makedatabase(scenario_filename):
     conn.execute(forcescreatequery)
     conn.execute(officercreatequery)
     conn.execute(itemscreatequery)
+    conn.execute(citiescreatequery)
 
 
 def parsefile(scenario_filename):
@@ -73,6 +77,8 @@ def parsefile(scenario_filename):
 
     # YEAR-00-MONTH-01 (Displayed Starting Date)
     year, _, month, _ = parsedata(f, 91, [1, 1, 1, 1])
+    year2, _, month2, _ = parsedata(f, 26427, [1, 1, 1, 1])
+    # YEAR-00-MONTH-01 (In-Game Starting Date)
 
     # Scenario Name
     scenname = parsedata(f, 95, 26)
@@ -104,9 +110,6 @@ def parsefile(scenario_filename):
         )
         conn.execute(forcesinsertquery, forcesvalues)
 
-    # YEAR-00-MONTH-01 (In-Game Starting Date)
-    year, _, month, _ = parsedata(f, 26427, [1, 1, 1, 1])
-
     # Officer Data+
     # Family Name, Given Name, Portrait id, Sex, Available Date, Birth Date, Death Date, _, Father, Mother, _, Spouse, Sworn Brother, Compatibility Score, Liked Officers
     officerdata = parsedata(f, 28003, [12, 41, 2, 1, 2, 2, 2, 3, 2, 2, 1, 2, 2, 1, 10, 10, 1, 2, 2,
@@ -128,7 +131,7 @@ def parsefile(scenario_filename):
             parseint(officeravailabledate),
             parseint(officerbirthdate),
             parseint(officerdeathdate),
-            # Values about 2000 are used to signify brotherly bonds whose father is not available in-game
+            # Values after 2000 are used to signify brotherly bonds whose father is not available in-game
             parseint(officerfather),
             parseint(officermother),
             parseint(officerspouse),
@@ -203,28 +206,44 @@ def parsefile(scenario_filename):
         print(forcetechniques.hex())
         print()
 
-    # District code + Max HP of cities
-    # Max HP is 2 bytes in little endian
-    # 15 Unknown bytes left
     citydistricthp = parsedata(f, 26438, [1, 2, 15], 42)
-    for district, hp, _ in citydistricthp:
-        printint(district, hp)
-
     citycolourdata = parsedata(f, 722, 1, 42)
-    citycolours = [parseint(byte) for byte in citycolourdata]
-    citydata = parsedata(f, 164256,
-                         [5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 6, 2, 14, 2, 7, 1, 2, 2, 2, 1, 1, 6], 42)
-    for cityid, city in enumerate(citydata):
-        _, troops, _, gold, _, food, _, spears, _, pikes, _, bows, _, horses, _, rams, _, towers, _, boats, _, marketrate, revenue, harvest, maxhp, will, order, specialty = city
-        print(cityid)
-        printint(troops, gold, food, spears, pikes,
-                 bows, horses, rams, towers, boats)
-        printint(marketrate, revenue, harvest, maxhp, will, order)
-        print(specialty.hex())
-        print()
+    citydata = parsedata(f, 0x2814F,
+                         [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 6, 2, 14, 2, 7, 1, 2, 2, 2, 1, 1, 6], 42)
+    for cityid, (city, (district, inithp, _), citycolour) in enumerate(zip(citydata, citydistricthp, citycolourdata)):
+        print(city)
+        owner, maxtroops, _, inittroops, _, gold, _, food, _, spears, _, pikes, _, bows, _, horses, _, rams, _, towers, _, boats, _, marketrate, revenue, harvest, maxhp, will, order, specialty = city
+        cityvalues = (
+            cityid,
+            city_map[cityid],
+            parseint(owner),
+            parseint(maxtroops),
+            parseint(inittroops),
+            parseint(gold),
+            parseint(food),
+            parseint(spears),
+            parseint(pikes),
+            parseint(bows),
+            parseint(horses),
+            parseint(rams),
+            parseint(towers),
+            parseint(boats),
+            parseint(marketrate),
+            parseint(revenue),
+            parseint(harvest),
+            parseint(maxhp),
+            parseint(inithp),
+            parseint(will),
+            parseint(order),
+            parseint(specialty),
+            parseint(district),
+            parseint(citycolour)
+        )
+        conn.execute(citiesinsertquery, cityvalues)
+    exit()
 
-    citydistricthp = parsedata(f, 26438, [1, 2, 15], 45)
-    for district, hp, _ in citydistricthp:
+    portdistricthp = parsedata(f, 26438 + 42*18, [1, 2, 15], 45)
+    for district, hp, _ in portdistricthp:
         printint(district, hp)
 
     gateportdata = parsedata(f, 167577,
@@ -253,10 +272,6 @@ def main():
     for filename in glob.glob("scenario/SCEN*"):
         makedatabase(filename)
         parsefile(filename)
-
-    # filename = 'scenario/SCEN000.S11'
-    # makedatabase(filename)
-    # parsefile(filename)
 
 
 if __name__ == '__main__':

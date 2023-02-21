@@ -97,101 +97,45 @@ CREATE TABLE IF NOT EXISTS items (
     owned INTEGER
 )'''
 
-scenarioinsertquery = f'''
-INSERT INTO scenario (
-    name, 
-    desc, 
-    year, 
-    month
-) VALUES ({",".join(["?"]*4)})'''
+citiescreatequery = '''
+CREATE TABLE IF NOT EXISTS cities (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    owner INTEGER,
+    maxtroops INTEGER,
+    inittroops INTEGER,
+    gold INTEGER,
+    food INTEGER,
+    spears INTEGER,
+    pikes INTEGER,
+    bows INTEGER,
+    horses INTEGER,
+    rams INTEGER,
+    towers INTEGER,
+    boats INTEGER,
+    marketrate INTEGER,
+    revenue INTEGER,
+    harvest INTEGER,
+    maxhp INTEGER,
+    inithp INTEGER,
+    will INTEGER,
+    \"order\" INTEGER,
+    specialty INTEGER,
+    districtnr INTEGER,
+    citycolour INTEGER
+)'''
 
-forcesinsertquery = f'''
-INSERT INTO forces (
-    id,
-    ruler,
-    desc,
-    colour,
-    district_number,
-    difficulty,
-    behaviour
-) VALUES ({",".join(["?"]*7)})'''
 
-officerinsertquery = f"""
-INSERT INTO officers (
-    id,
-    family_name,
-    given_name,
-    portrait,
-    sex,
-    available_date,
-    birth_date,
-    death_date,
-    father,
-    mother,
-    spouse,
-    sworn_brother,
-    compatibility,
-    liked_officer_1,
-    liked_officer_2,
-    liked_officer_3,
-    liked_officer_4,
-    liked_officer_5,
-    disliked_officer_1,
-    disliked_officer_2,
-    disliked_officer_3,
-    disliked_officer_4,
-    disliked_officer_5,
-    allegiance,
-    location,
-    service,
-    status,
-    rank,
-    loyalty,
-    deeds,
-    spear_affinity,
-    pike_affinity,
-    bow_affinity,
-    cavalry_affinity,
-    weaponry_affinity,
-    navy_affinity,
-    ldr,
-    war,
-    int,
-    pol,
-    chr,
-    ldr_growth,
-    war_growth,
-    int_growth,
-    pol_growth,
-    chr_growth,
-    skill,
-    debatestyle,
-    loyaltylevel,
-    ambition,
-    use,
-    character,
-    voice,
-    tone,
-    court_importance,
-    strategy,
-    campaign_style,
-    model_sex,
-    model,
-    weapon_model,
-    horse_model,
-    portrait_age,
-    action,
-    debate_ability
-) VALUES ({",".join(["?"]*64)})"""
+def paramstr(n):
+    return f"({','.join(['?']*n)})"
 
-itemsinsertquery = f'''
-INSERT INTO items (
-    id,
-    name,
-    type,
-    loyalty,
-    picture,
-    owner,
-    city,
-    owned
-) VALUES ({",".join(["?"]*8)})'''
+
+scenarioinsertquery = "INSERT INTO scenario VALUES" + paramstr(4)
+
+forcesinsertquery = "INSERT INTO forces VALUES" + paramstr(7)
+
+officerinsertquery = "INSERT INTO officers VALUES" + paramstr(64)
+
+itemsinsertquery = "INSERT INTO items VALUES" + paramstr(8)
+
+citiesinsertquery = "INSERT INTO cities VALUES" + paramstr(24)
