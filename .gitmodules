@@ -1,3 +1,3 @@
-[submodule "binary_layout"]
-	path = binary_layout
-	url = https://github.com/rickt1998/binary_layout
+[submodule "binary_parser"]
+	path = binary_parser
+	url = https://github.com/rickt1998/binary_parser
