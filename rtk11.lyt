@@ -190,4 +190,13 @@ force 160603 68 42
     padding 1
 end
 
+begin
+district 163799 8 42
+    position int 1
+    number int 1
+    ruler int 2
+    target int 2
+    specifictarget int 2
+end
+
 endfile
