@@ -233,4 +233,31 @@ city 0x2814F 81 42
     specialty int 6
 end
 
+begin
+gatesports 0x28E99 64 45
+    owner int 1
+    troops int 2
+    padding 2
+    gold int 2
+    padding 2
+    food int 2
+    padding 6
+    spears int 2
+    padding 2
+    pikes int 2
+    padding 2
+    bows int 2
+    padding 2
+    horses int 2
+    padding 2
+    rams int 2
+    padding 2
+    towers int 2
+    padding 14
+    ships int 2
+    padding 6
+    will int 1
+    padding 2
+end
+
 endfile
