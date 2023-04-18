@@ -260,4 +260,11 @@ gatesports 0x28E99 64 45
     padding 2
 end
 
+begin
+countries 0x299D9 103 42
+    name str 17
+    desc str 80
+    padding 6
+end
+
 endfile
