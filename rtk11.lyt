@@ -37,15 +37,6 @@ force 932 607 42
     desc str 606
 end
 
-begin
-force 163799 8 42
-    colour int 1
-    district int 1
-    ruler int 2
-    behaviour int 1
-    padding 3
-end
-
 # death either 00 for natural, 01 for unnatural
 begin
 officer 28003 152 850
@@ -137,6 +128,66 @@ item 157203 34 100
     owner int 2
     city int 1
     ownerorcity int 1
+end
+
+begin
+force 160603 68 42
+    ruler int 2
+    strategist int 2
+    relationship1 int 1
+    relationship2 int 1
+    relationship3 int 1
+    relationship4 int 1
+    relationship5 int 1
+    relationship6 int 1
+    relationship7 int 1
+    relationship8 int 1
+    relationship9 int 1
+    relationship10 int 1
+    relationship11 int 1
+    relationship12 int 1
+    relationship13 int 1
+    relationship14 int 1
+    relationship15 int 1
+    relationship16 int 1
+    relationship17 int 1
+    relationship18 int 1
+    relationship19 int 1
+    relationship20 int 1
+    relationship21 int 1
+    relationship22 int 1
+    relationship23 int 1
+    relationship24 int 1
+    relationship25 int 1
+    relationship26 int 1
+    relationship27 int 1
+    relationship28 int 1
+    relationship29 int 1
+    relationship30 int 1
+    relationship31 int 1
+    relationship32 int 1
+    relationship33 int 1
+    relationship34 int 1
+    relationship35 int 1
+    relationship36 int 1
+    relationship37 int 1
+    relationship38 int 1
+    relationship39 int 1
+    relationship40 int 1
+    relationship41 int 1
+    relationship42 int 1
+    relationshipqiang int 1
+    relationshipshanyue int 1
+    relationshipwhuhuan int 1
+    relationshipnanman int 1
+    relationshipbandits int 1
+    title int 1
+    padding 1
+    colour int 1
+    goal int 2
+    alliance int 7
+    research int 4
+    padding 1
 end
 
 endfile
