@@ -128,4 +128,15 @@ officer 28003 152 850
     padding 3
 end
 
+begin
+item 157203 34 100
+    name str 27
+    type int 1
+    loyalty int 1
+    picture int 1
+    owner int 2
+    city int 1
+    ownerorcity int 1
+end
+
 endfile
