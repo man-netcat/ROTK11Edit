@@ -1,0 +1,131 @@
+# tablename index length repetitions
+# colname type len
+
+# Scenario Name
+begin
+scenario 95 26 1
+    name str 26
+end
+
+# Scenario Description
+begin
+scenario 121 600 1
+    desc str 600
+end
+
+# Scenario Year
+# NOTE: Handle Ingame Year 26427 4 1
+begin
+scenario 91 4 1
+    year int 1
+    padding 1
+    month int 1
+    padding 1
+end
+
+# Scenario Emperor and Game Mode
+# Change gamemode to 01 for rise of heroes
+begin
+scenario 26431 3 1
+    emperor int 2
+    gamemode int 1
+end
+
+begin
+force 932 607 42
+    difficulty int 1
+    desc str 606
+end
+
+begin
+force 163799 8 42
+    colour int 1
+    district int 1
+    ruler int 2
+    behaviour int 1
+    padding 3
+end
+
+# death either 00 for natural, 01 for unnatural
+begin
+officer 28003 152 850
+    familyname str 12
+    givenname str 12
+    padding 29
+    portrait int 2
+    sex int 1
+    availabledate int 2
+    birthdate int 2
+    deathdate int 2
+    death int 1
+    clan int 2
+    father int 2
+    mother int 2
+    generation int 1
+    spouse int 2
+    swornbrother int 2
+    compatibility int 1
+    likedofficer1 int 2
+    likedofficer2 int 2
+    likedofficer3 int 2
+    likedofficer4 int 2
+    likedofficer5 int 2
+    dislikedofficer1 int 2
+    dislikedofficer2 int 2
+    dislikedofficer3 int 2
+    dislikedofficer4 int 2
+    dislikedofficer5 int 2
+    allegiance int 1
+    service int 2
+    location int 2
+    status int 1
+    rank int 1
+    dependence int 2
+    loyalty int 1
+    deeds int 2
+    spearaffinity int 1
+    pikeaffinity int 1
+    bowaffinity int 1
+    cavalryaffinity int 1
+    siegeaffinity int 1
+    navyaffinity int 1
+    ldr int 1
+    war int 1
+    int int 1
+    pol int 1
+    chr int 1
+    ldrgrowth int 1
+    wargrowth int 1
+    intgrowth int 1
+    polgrowth int 1
+    chrgrowth int 1
+    birthplace int 1
+    skill int 1
+    debatestyle int 1
+    virtue int 1
+    desire int 1
+    rankselection int 1
+    character int 1
+    voice int 1
+    tone int 1
+    courtimportance int 1
+    strategictendency int 1
+    localaffiliation int 1
+    modelstance int 1
+    modelheadgear int 1
+    modelface int 1
+    modelbody int 1
+    modelcape int 1
+    modelarms int 1
+    modelboots int 1
+    modelarrows int 1
+    padding 1
+    modelbow int 1
+    modelweapon int 1
+    modelhorse int 1
+    portraitage int 1
+    guilecards int 1
+    padding 3
+end
+
+endfile
