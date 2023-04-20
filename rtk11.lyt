@@ -251,7 +251,7 @@ countries 0x299D9 103 42
     desc str 80
     unknown1 int 1
     unknown2 int 1
-    unknown3 int 1
+    used int 1
     padding 3
 end
 
