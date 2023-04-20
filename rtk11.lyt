@@ -14,13 +14,12 @@ scenario 0x79 600 1
 end
 
 # Scenario Year
-# NOTE: Handle Ingame Year 26427 4 1
+# TODO for writeback: Handle Ingame Year 0x673B 3 1
 begin
-scenario 0x5B 4 1
+scenario 0x5B 3 1
     year int 1
     padding 1
     month int 1
-    padding 1
 end
 
 # Scenario Emperor and Game Mode
@@ -110,7 +109,7 @@ officer 0x6D63 152 850
     modelarms int 1
     modelboots int 1
     modelarrows int 1
-    padding 1
+    modelunknown int 1
     modelbow int 1
     modelweapon int 1
     modelhorse int 1
@@ -131,7 +130,7 @@ item 0x26613 34 100
 end
 
 begin
-force 0x27E82 68 42
+force 0x2735B 68 42
     ruler int 2
     strategist int 2
     relationship1 int 1
@@ -182,7 +181,7 @@ force 0x27E82 68 42
     relationshipnanman int 1
     relationshipbandits int 1
     title int 1
-    padding 1
+    country int 1
     colour int 1
     goal int 2
     alliance int 7
@@ -202,28 +201,21 @@ end
 begin
 city 0x2814F 81 42
     owner int 1
-    maxtroops int 2
-    padding 2
-    troops int 2
-    padding 2
-    gold int 2
-    padding 2
-    food int 2
-    padding 6
-    spears int 2
-    padding 2
-    pikes int 2
-    padding 2
-    bows int 2
-    padding 2
-    horsers int 2
-    padding 2
-    rams int 2
-    padding 2
-    towers int 2
-    padding 14
-    ships int 2
-    padding 7
+    maxtroops int 4
+    troops int 4
+    gold int 4
+    food int 4
+    padding 4
+    spears int 4
+    pikes int 4
+    bows int 4
+    horsers int 4
+    rams int 4
+    towers int 4
+    padding 12
+    ships int 4
+    padding 4
+    unknown int 1
     trade int 1
     revenue int 2
     harvest int 2
@@ -234,37 +226,33 @@ city 0x2814F 81 42
 end
 
 begin
-gatesports 0x28E99 64 45
+gates_ports 0x28E99 64 45
     owner int 1
-    troops int 2
-    padding 2
-    gold int 2
-    padding 2
-    food int 2
-    padding 6
-    spears int 2
-    padding 2
-    pikes int 2
-    padding 2
-    bows int 2
-    padding 2
-    horses int 2
-    padding 2
-    rams int 2
-    padding 2
-    towers int 2
-    padding 14
-    ships int 2
-    padding 6
+    troops int 4
+    gold int 4
+    food int 4
+    padding 4
+    spears int 4
+    pikes int 4
+    bows int 4
+    horses int 4
+    rams int 4
+    towers int 4
+    padding 12
+    ships int 4
+    padding 4
     will int 1
-    padding 2
+    unknown int 2
 end
 
 begin
 countries 0x299D9 103 42
     name str 17
     desc str 80
-    padding 6
+    unknown1 int 1
+    unknown2 int 1
+    unknown3 int 1
+    padding 3
 end
 
 endfile
