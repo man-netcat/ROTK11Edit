@@ -2,7 +2,6 @@ import os
 import shutil
 import sqlite3
 import sys
-from pathlib import Path
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
