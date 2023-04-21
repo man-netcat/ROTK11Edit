@@ -18,6 +18,7 @@ class TableGUI(QMainWindow):
         super().__init__()
         self.setWindowTitle("ROTK XI Editor")
         self.setWindowIcon(QIcon("icon.png"))
+        self.resize(800, 600)
 
         self.tab_widget = QTabWidget(self)
         self.setCentralWidget(self.tab_widget)
@@ -36,7 +37,50 @@ class TableGUI(QMainWindow):
         save_file_action.triggered.connect(self.save_database)
         self.file_menu.addAction(save_file_action)
 
+        exit_action = QAction("&Exit", self)
+        exit_action.setShortcut("Ctrl+Q")
+        exit_action.triggered.connect(self.close)
+        self.file_menu.addAction(exit_action)
+
         self.tables = []
+
+        self.sorting_order = Qt.AscendingOrder
+
+        self.open_database()
+
+    def create_table_widget(self, headers, data, table_widget):
+        table_widget.horizontalHeader().sectionClicked.connect(self.sort_table)
+        table_widget.setColumnCount(len(headers))
+        table_widget.setHorizontalHeaderLabels(headers)
+        table_widget.setRowCount(len(data))
+        table_widget.setSortingEnabled(True)
+        for i in range(len(data)):
+            for j in range(len(headers)):
+                cell_data = str(data[i][j])
+                if cell_data.isnumeric():
+                    item = QTableWidgetItem()
+                    item.setData(Qt.DisplayRole, float(cell_data))
+                    item.setFlags(item.flags() | Qt.ItemIsEditable)
+                    table_widget.setItem(i, j, item)
+                else:
+                    item = QTableWidgetItem(cell_data)
+                    item.setFlags(item.flags() | Qt.ItemIsEditable)
+                    table_widget.setItem(i, j, item)
+
+        self.tables.append(table_widget)
+
+    def sort_table(self, logical_index):
+        table_widget = self.tables[-1]
+
+        if self.sorting_order == Qt.AscendingOrder:
+            self.sorting_order = Qt.DescendingOrder
+        else:
+            self.sorting_order = Qt.AscendingOrder
+
+        table_widget.sortItems(logical_index, self.sorting_order)
+
+        # Update sorting_order attribute
+        self.sorting_order = table_widget.horizontalHeader().sortIndicatorOrder()
 
     def open_database(self):
         self.old_scen_path, _ = QFileDialog.getOpenFileName(
@@ -44,9 +88,16 @@ class TableGUI(QMainWindow):
         if not self.old_scen_path:
             return
 
-        scenario_name = Path(self.old_scen_path).stem
+        # Get the temporary folder path based on the operating system
+        if os.name == 'posix':  # Linux/Mac
+            tmp_folder = '/tmp'
+        elif os.name == 'nt':  # Windows
+            tmp_folder = os.environ['TEMP']
+        else:
+            raise OSError('Unsupported operating system')
 
-        self.db_path = f'databases/{scenario_name}.db'
+        # Create a db file in the temporary folder
+        self.db_path = os.path.join(tmp_folder, 'rtk11.db')
         if os.path.exists(self.db_path):
             os.remove(self.db_path)
 
@@ -107,16 +158,6 @@ class TableGUI(QMainWindow):
         # This writes the data from the database back to the scenario file
         with BinaryParser('rtk11.lyt') as self.bp:
             self.bp.write_back(self.new_scen_path, self.db_path)
-
-    def create_table_widget(self, headers, data, table_widget):
-        table_widget.setColumnCount(len(headers))
-        table_widget.setHorizontalHeaderLabels(headers)
-        table_widget.setRowCount(len(data))
-        for i in range(len(data)):
-            for j in range(len(headers)):
-                item = QTableWidgetItem(str(data[i][j]))
-                item.setFlags(item.flags() | Qt.ItemIsEditable)
-                table_widget.setItem(i, j, item)
 
 
 def main():
