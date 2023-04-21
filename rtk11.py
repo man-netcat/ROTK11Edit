@@ -6,8 +6,9 @@ from pathlib import Path
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QAction, QApplication, QFileDialog, QMainWindow,
-                             QTableWidget, QTableWidgetItem, QTabWidget)
+from PyQt5.QtWidgets import (QAction, QApplication, QFileDialog, QLineEdit,
+                             QMainWindow, QTableWidget, QTableWidgetItem,
+                             QTabWidget, QToolBar)
 
 from binary_parser.binary_parser import BinaryParser
 from constants import *
@@ -19,6 +20,18 @@ class TableGUI(QMainWindow):
         self.setWindowTitle("ROTK XI Editor")
         self.setWindowIcon(QIcon("icon.png"))
         self.resize(800, 600)
+
+        filter_toolbar = QToolBar(self)
+        filter_toolbar.setWindowTitle("Filter")
+        self.addToolBar(filter_toolbar)
+
+        self.search_box = QLineEdit()
+        self.search_box.returnPressed.connect(self.filter_table)
+        filter_toolbar.addWidget(self.search_box)
+
+        filter_action = QAction("Filter", self)
+        filter_action.triggered.connect(self.filter_table)
+        filter_toolbar.addAction(filter_action)
 
         self.tab_widget = QTabWidget(self)
         self.setCentralWidget(self.tab_widget)
@@ -82,6 +95,27 @@ class TableGUI(QMainWindow):
         # Update sorting_order attribute
         self.sorting_order = table_widget.horizontalHeader().sortIndicatorOrder()
 
+    def filter_table(self):
+        search_text = self.search_box.text().lower()
+
+        for table in self.tables:
+            table.setSortingEnabled(False)
+
+            for i in range(table.rowCount()):
+                match_found = False
+
+                for j in range(table.columnCount()):
+                    cell_text = table.item(i, j).text().lower()
+
+                    if search_text in cell_text:
+                        match_found = True
+                        break
+
+                table.setRowHidden(i, not match_found)
+
+            table.setSortingEnabled(True)
+            table.sortByColumn(0, self.sorting_order)
+
     def open_database(self):
         self.old_scen_path, _ = QFileDialog.getOpenFileName(
             self, "Open Scenario File", "", "Scenario Files (*.s11)")
@@ -135,7 +169,8 @@ class TableGUI(QMainWindow):
         if not self.new_scen_path:
             return
 
-        shutil.copyfile(self.old_scen_path, self.new_scen_path)
+        if not os.path.exists(self.new_scen_path):
+            shutil.copyfile(self.old_scen_path, self.new_scen_path)
 
         conn = sqlite3.connect(self.db_path)
 
