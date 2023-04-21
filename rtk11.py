@@ -146,8 +146,10 @@ class TableGUI(QMainWindow):
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         table_names = [x[0] for x in cursor.fetchall()]
 
-        # Create a table widget for each table in the database
         for table_name in table_names:
+            if table_name == "sqlite_sequence":
+                continue
+
             table_widget = QTableWidget(self)
             table_widget.setObjectName(table_name)
             self.tab_widget.addTab(table_widget, table_name)
