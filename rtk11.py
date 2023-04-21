@@ -5,9 +5,9 @@ import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QAction, QApplication, QFileDialog, QLineEdit,
-                             QMainWindow, QTableWidget, QTableWidgetItem,
-                             QTabWidget, QToolBar)
+from PyQt5.QtWidgets import (QAction, QApplication, QComboBox, QFileDialog,
+                             QLineEdit, QMainWindow, QTableWidget,
+                             QTableWidgetItem, QTabWidget, QToolBar)
 
 from binary_parser.binary_parser import BinaryParser
 from constants import *
@@ -60,21 +60,39 @@ class TableGUI(QMainWindow):
 
         self.open_database()
 
+    def specialty_bytes(self, bitstring):
+        return specialty_hex.index(bitstring)
+
+    def create_combobox(self, options, data):
+        # Create a QComboBox for the specialty column
+        combo_box = QComboBox()
+        for option_value, option_text in options.items():
+            combo_box.addItem(option_text, option_value)
+
+        # Ensure that data is a valid index for the combobox options
+        if data in options:
+            combo_box.setCurrentIndex(list(options.keys()).index(data))
+
+        return combo_box
+
     def create_table_widget(self, headers, data, table_widget):
         table_widget.horizontalHeader().sectionClicked.connect(self.sort_table)
         table_widget.setColumnCount(len(headers))
         table_widget.setHorizontalHeaderLabels(headers)
         table_widget.setRowCount(len(data))
         table_widget.setSortingEnabled(True)
+
         for i in range(len(data)):
             for j in range(len(headers)):
-                cell_data = str(data[i][j])
-                if cell_data.isnumeric():
-                    item = QTableWidgetItem()
-                    item.setData(Qt.DisplayRole, float(cell_data))
-                    item.setFlags(item.flags() | Qt.ItemIsEditable)
-                    table_widget.setItem(i, j, item)
+                if "specialty" in headers and j == headers.index("specialty"):
+                    specialty_combobox = self.create_combobox(
+                        specialty_options, self.specialty_bytes(data[i][j]))
+                    table_widget.setCellWidget(i, j, specialty_combobox)
                 else:
+                    cell_data = str(data[i][j])
+                    if cell_data.isnumeric() and cell_data.startswith('0') and not cell_data == '0':
+                        # Maintain leading zeroes
+                        cell_data = f"{int(cell_data):02}"
                     item = QTableWidgetItem(cell_data)
                     item.setFlags(item.flags() | Qt.ItemIsEditable)
                     table_widget.setItem(i, j, item)
@@ -181,8 +199,16 @@ class TableGUI(QMainWindow):
             headers = [table_widget.horizontalHeaderItem(
                 i).text() for i in range(table_widget.columnCount())]
             for i in range(table_widget.rowCount()):
-                row = [table_widget.item(i, j).text()
-                       for j in range(table_widget.columnCount())]
+                row = []
+                for j in range(table_widget.columnCount()):
+                    if headers[j] == 'specialty':
+                        specialty_value = \
+                            table_widget \
+                            .cellWidget(i, j)\
+                            .currentData()
+                        row.append(specialty_hex[specialty_value])
+                    else:
+                        row.append(table_widget.item(i, j).text())
                 placeholders = ','.join(['?'] * len(row))
                 values = tuple(row)
                 conn.execute(
