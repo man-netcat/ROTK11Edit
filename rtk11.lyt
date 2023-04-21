@@ -185,7 +185,7 @@ force 0x2735B 68 42
     goal int 2
     alliance int 7
     research int 4
-    padding 1
+    unknown int 1
 end
 
 begin
