@@ -13,11 +13,12 @@ from binary_parser.binary_parser import BinaryParser
 from constants import *
 
 
-class TableGUI(QMainWindow):
+class ROTKXIGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ROTK XI Editor")
         self.setWindowIcon(QIcon("icon.png"))
+        self.resize(800, 600)
 
         self.tab_widget = QTabWidget(self)
         self.setCentralWidget(self.tab_widget)
@@ -55,6 +56,22 @@ class TableGUI(QMainWindow):
         self.tables = []
         self.new_scen_path = None
 
+    def init_table_widget(self, table_name, headers, data):
+        table_widget = QTableWidget(self)
+        table_widget.setObjectName(table_name)
+        self.tab_widget.addTab(table_widget, table_name)
+        self.tables.append(table_widget)
+
+        # Populate the table widget with the data
+        table_widget.setColumnCount(len(headers))
+        table_widget.setHorizontalHeaderLabels(headers)
+        table_widget.setRowCount(len(data))
+        for i in range(len(data)):
+            for j in range(len(headers)):
+                item = QTableWidgetItem(str(data[i][j]))
+                item.setFlags(item.flags() | Qt.ItemIsEditable)
+                table_widget.setItem(i, j, item)
+
     def open_database(self):
         """Opens a scenario file and parses the data into a database file for editing.
         """
@@ -63,6 +80,8 @@ class TableGUI(QMainWindow):
 
         if not self.old_scen_path:
             return
+
+        self.tab_widget.clear()
 
         self.db_path = os.path.join(tempfile.gettempdir(), 'rtk11.db')
 
@@ -81,25 +100,11 @@ class TableGUI(QMainWindow):
         table_names = [x[0] for x in cursor.fetchall()]
 
         for table_name in table_names:
-            table_widget = QTableWidget(self)
-            table_widget.setObjectName(table_name)
-            self.tab_widget.addTab(table_widget, table_name)
-            self.tables.append(table_widget)
-
             # Retrieve the column names and data from the table
             cursor.execute(f"SELECT * FROM {table_name}")
             headers = [x[0] for x in cursor.description]
             data = cursor.fetchall()
-
-            # Populate the table widget with the data
-            table_widget.setColumnCount(len(headers))
-            table_widget.setHorizontalHeaderLabels(headers)
-            table_widget.setRowCount(len(data))
-            for i in range(len(data)):
-                for j in range(len(headers)):
-                    item = QTableWidgetItem(str(data[i][j]))
-                    item.setFlags(item.flags() | Qt.ItemIsEditable)
-                    table_widget.setItem(i, j, item)
+            self.init_table_widget(table_name, headers, data)
 
         conn.close()
         self.save_file_action.setEnabled(True)
@@ -151,7 +156,7 @@ class TableGUI(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    gui = TableGUI()
+    gui = ROTKXIGUI()
     gui.show()
     sys.exit(app.exec_())
 
