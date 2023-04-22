@@ -1225,3 +1225,23 @@ officer_map = defaultdict(lambda: "Unknown", {
     0x0259: "Lu Ji ",
     0xFFFF: "None"
 })
+
+specialty_options = defaultdict(lambda: "Unknown", {
+    0: "Large City",
+    1: "Spears",
+    2: "Pikes",
+    3: "Bows",
+    4: "Horses",
+    5: "Weaponry",
+    6: "Navy"
+})
+
+specialty_hex = [int(n, 16) for n in [
+    '000000000000',
+    '010000000000',
+    '000100000000',
+    '000001000000',
+    '000000010000',
+    '000000000100',
+    '000000000001'
+]]

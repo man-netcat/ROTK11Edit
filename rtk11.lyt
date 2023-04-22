@@ -17,8 +17,7 @@ end
 # TODO for writeback: Handle Ingame Year 0x673B 3 1
 begin
 scenario 0x5B 3 1
-    year int 1
-    padding 1
+    year int 2
     month int 1
 end
 
@@ -186,7 +185,7 @@ force 0x2735B 68 42
     goal int 2
     alliance int 7
     research int 4
-    padding 1
+    unknown int 1
 end
 
 begin
