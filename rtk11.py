@@ -6,8 +6,9 @@ import tempfile
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QAction, QApplication, QFileDialog, QMainWindow,
-                             QTableWidget, QTableWidgetItem, QTabWidget)
+from PyQt5.QtWidgets import (QAction, QApplication, QFileDialog, QLineEdit,
+                             QMainWindow, QTableWidget, QTableWidgetItem,
+                             QTabWidget, QToolBar)
 
 from binary_parser.binary_parser import BinaryParser
 from constants import *
@@ -19,6 +20,18 @@ class ROTKXIGUI(QMainWindow):
         self.setWindowTitle("ROTK XI Editor")
         self.setWindowIcon(QIcon("icon.png"))
         self.resize(800, 600)
+
+        filter_toolbar = QToolBar(self)
+        filter_toolbar.setWindowTitle("Filter")
+        self.addToolBar(filter_toolbar)
+
+        self.search_box = QLineEdit()
+        self.search_box.returnPressed.connect(self.filter_table)
+        filter_toolbar.addWidget(self.search_box)
+
+        filter_action = QAction("Filter", self)
+        filter_action.triggered.connect(self.filter_table)
+        filter_toolbar.addAction(filter_action)
 
         self.tab_widget = QTabWidget(self)
         self.setCentralWidget(self.tab_widget)
@@ -54,7 +67,11 @@ class ROTKXIGUI(QMainWindow):
         self.file_menu.addAction(self.exit_action)
 
         self.tables = []
+        self.sorting_order = Qt.AscendingOrder
+
         self.new_scen_path = None
+
+        self.open_database()
 
     def init_table_widget(self, table_name, headers, data):
         table_widget = QTableWidget(self)
@@ -71,6 +88,46 @@ class ROTKXIGUI(QMainWindow):
                 item = QTableWidgetItem(str(data[i][j]))
                 item.setFlags(item.flags() | Qt.ItemIsEditable)
                 table_widget.setItem(i, j, item)
+
+        table_widget.setSortingEnabled(True)
+
+        header = table_widget.horizontalHeader()
+        header.sectionClicked.connect(self.sort_table)
+        header.setSectionsClickable(True)
+
+    def sort_table(self, logical_index):
+        table_widget = self.tables[-1]
+
+        if self.sorting_order == Qt.AscendingOrder:
+            self.sorting_order = Qt.DescendingOrder
+        else:
+            self.sorting_order = Qt.AscendingOrder
+
+        table_widget.sortItems(logical_index, self.sorting_order)
+
+        # Update sorting_order attribute
+        self.sorting_order = table_widget.horizontalHeader().sortIndicatorOrder()
+
+    def filter_table(self):
+        search_text = self.search_box.text().lower()
+
+        for table in self.tables:
+            table.setSortingEnabled(False)
+
+            for i in range(table.rowCount()):
+                match_found = False
+
+                for j in range(table.columnCount()):
+                    cell_text = table.item(i, j).text().lower()
+
+                    if search_text in cell_text:
+                        match_found = True
+                        break
+
+                table.setRowHidden(i, not match_found)
+
+            table.setSortingEnabled(True)
+            table.sortByColumn(0, self.sorting_order)
 
     def open_database(self):
         """Opens a scenario file and parses the data into a database file for editing.
@@ -150,7 +207,9 @@ class ROTKXIGUI(QMainWindow):
         if not self.new_scen_path:
             return
 
-        shutil.copyfile(self.old_scen_path, self.new_scen_path)
+        if self.old_scen_path != self.new_scen_path:
+            shutil.copyfile(self.old_scen_path, self.new_scen_path)
+
         self.save_database()
 
 
