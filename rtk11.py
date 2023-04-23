@@ -1,3 +1,4 @@
+import filecmp
 import os
 import shutil
 import sqlite3
@@ -6,36 +7,21 @@ import tempfile
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QAction, QApplication, QFileDialog, QLineEdit,
-                             QMainWindow, QTableWidget, QTableWidgetItem,
-                             QTabWidget, QToolBar)
+from PyQt5.QtWidgets import (QAction, QApplication, QComboBox, QFileDialog,
+                             QLineEdit, QMainWindow, QStyledItemDelegate,
+                             QTableWidget, QTableWidgetItem, QTabWidget,
+                             QToolBar)
 
 from binary_parser.binary_parser import BinaryParser
 from constants import *
 
 
+def reverse_dict(d):
+    return {v: k for k, v in d.items()}
+
+
 class ROTKXIGUI(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("ROTK XI Editor")
-        self.setWindowIcon(QIcon("icon.png"))
-        self.resize(800, 600)
-
-        filter_toolbar = QToolBar(self)
-        filter_toolbar.setWindowTitle("Filter")
-        self.addToolBar(filter_toolbar)
-
-        self.search_box = QLineEdit()
-        self.search_box.returnPressed.connect(self.filter_table)
-        filter_toolbar.addWidget(self.search_box)
-
-        filter_action = QAction("Filter", self)
-        filter_action.triggered.connect(self.filter_table)
-        filter_toolbar.addAction(filter_action)
-
-        self.tab_widget = QTabWidget(self)
-        self.setCentralWidget(self.tab_widget)
-
+    def init_menubar(self):
         self.menubar = self.menuBar()
 
         self.file_menu = self.menubar.addMenu("&File")
@@ -66,28 +52,68 @@ class ROTKXIGUI(QMainWindow):
         self.exit_action.triggered.connect(self.close)
         self.file_menu.addAction(self.exit_action)
 
-        self.tables = []
+    def init_functions(self):
+        self.filter_toolbar = QToolBar(self)
+        self.filter_toolbar.setWindowTitle("Filter")
+        self.addToolBar(self.filter_toolbar)
+
+        self.search_box = QLineEdit()
+        self.search_box.returnPressed.connect(self.filter_table)
+        self.filter_toolbar.addWidget(self.search_box)
+
+        self.filter_action = QAction("Filter", self)
+        self.filter_action.triggered.connect(self.filter_table)
+        self.filter_toolbar.addAction(self.filter_action)
+
+    def __init__(self, testing=False):
+        super().__init__()
+        self.setWindowTitle("ROTK XI Editor")
+        self.setWindowIcon(QIcon("icon.png"))
+        self.resize(800, 600)
+
+        self.init_functions()
+        self.init_menubar()
+
+        self.tab_widget = QTabWidget(self)
+        self.setCentralWidget(self.tab_widget)
+
+        self.table_widgets = []
+        self.table_data = {}
         self.sorting_order = Qt.AscendingOrder
 
         self.new_scen_path = None
 
-        self.open_database()
+        self.open_database(testing)
 
     def init_table_widget(self, table_name, headers, data):
         table_widget = QTableWidget(self)
         table_widget.setObjectName(table_name)
         self.tab_widget.addTab(table_widget, table_name)
-        self.tables.append(table_widget)
+        self.table_widgets.append(table_widget)
 
         # Populate the table widget with the data
         table_widget.setColumnCount(len(headers))
         table_widget.setHorizontalHeaderLabels(headers)
         table_widget.setRowCount(len(data))
         for i in range(len(data)):
-            for j in range(len(headers)):
-                item = QTableWidgetItem(str(data[i][j]))
-                item.setFlags(item.flags() | Qt.ItemIsEditable)
-                table_widget.setItem(i, j, item)
+            for j, colname in enumerate(headers):
+                if colname == "specialty":
+                    specialty_index = specialty_hex.index(data[i][j])
+                    cell_data = specialty_options[specialty_index]
+                    options = specialty_options.values()
+                elif colname in col_map.keys():
+                    cell_data = col_map[colname][data[i][j]]
+                    options = col_map[colname].values()
+                else:
+                    cell_str = str(data[i][j])
+                    if cell_str.isnumeric() and cell_str.startswith('0') and not cell_str == '0':
+                        # Maintain leading zeroes
+                        cell_data = f"{int(cell_str):02}"
+                    else:
+                        cell_data = str(data[i][j])
+                cell_item = QTableWidgetItem(cell_data)
+                cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
+                table_widget.setItem(i, j, cell_item)
 
         table_widget.setSortingEnabled(True)
 
@@ -96,7 +122,7 @@ class ROTKXIGUI(QMainWindow):
         header.setSectionsClickable(True)
 
     def sort_table(self, logical_index):
-        table_widget = self.tables[-1]
+        table_widget = self.table_widgets[-1]
 
         if self.sorting_order == Qt.AscendingOrder:
             self.sorting_order = Qt.DescendingOrder
@@ -111,7 +137,7 @@ class ROTKXIGUI(QMainWindow):
     def filter_table(self):
         search_text = self.search_box.text().lower()
 
-        for table in self.tables:
+        for table in self.table_widgets:
             table.setSortingEnabled(False)
 
             for i in range(table.rowCount()):
@@ -129,14 +155,17 @@ class ROTKXIGUI(QMainWindow):
             table.setSortingEnabled(True)
             table.sortByColumn(0, self.sorting_order)
 
-    def open_database(self):
+    def open_database(self, testing=False):
         """Opens a scenario file and parses the data into a database file for editing.
         """
-        self.old_scen_path, _ = QFileDialog.getOpenFileName(
-            self, "Open Scenario File", "", "Scenario Files (*.s11)")
+        if testing:
+            self.old_scen_path = 'scenario/SCEN000.S11'
+        else:
+            self.old_scen_path, _ = QFileDialog.getOpenFileName(
+                self, "Open Scenario File", "", "Scenario Files (*.s11)")
 
-        if not self.old_scen_path:
-            return
+            if not self.old_scen_path:
+                return
 
         self.tab_widget.clear()
 
@@ -162,33 +191,38 @@ class ROTKXIGUI(QMainWindow):
             headers = [x[0] for x in cursor.description]
             data = cursor.fetchall()
             self.init_table_widget(table_name, headers, data)
+            self.table_data[table_name] = data
 
         conn.close()
         self.save_file_action.setEnabled(True)
         self.save_as_file_action.setEnabled(True)
 
-    def save_database(self):
+        if testing:
+            self.save_database(testing)
+
+    def save_database(self, testing=False):
         """
         Saves the current state of the database to the scenario file.
         Will first prompt for the path to save to if it doesn't exist yet
         """
+        if testing:
+            self.new_scen_path = 'scenario/SCEN009.S11'
+
         if not self.new_scen_path:
             self.save_as_database()
             return
 
         conn = sqlite3.connect(self.db_path)
 
-        for table_widget in self.tables:
+        for table_widget in self.table_widgets:
             table_name = table_widget.objectName()
+            table_data = self.table_data[table_name]
             headers = [table_widget.horizontalHeaderItem(
                 i).text() for i in range(table_widget.columnCount())]
-            for i in range(table_widget.rowCount()):
-                row = [table_widget.item(i, j).text()
-                       for j in range(table_widget.columnCount())]
-                placeholders = ','.join(['?'] * len(row))
-                values = tuple(row)
+            placeholders = ','.join(['?'] * len(headers))
+            for row in table_data:
                 conn.execute(
-                    f"INSERT OR REPLACE INTO {table_name} ({','.join(headers)}) VALUES ({placeholders})", values)
+                    f"INSERT OR REPLACE INTO {table_name} ({','.join(headers)}) VALUES ({placeholders})", row)
 
         conn.commit()
         conn.close()
@@ -196,6 +230,12 @@ class ROTKXIGUI(QMainWindow):
         # This writes the data from the database back to the scenario file
         with BinaryParser('rtk11.lyt') as self.bp:
             self.bp.write_back(self.new_scen_path, self.db_path)
+
+        if testing:
+            assert filecmp.cmp(self.old_scen_path, self.new_scen_path)
+            print("Assertion complete")
+            print(f"{self.old_scen_path} is equal to {self.new_scen_path}")
+            exit()
 
     def save_as_database(self):
         """
@@ -215,7 +255,7 @@ class ROTKXIGUI(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    gui = ROTKXIGUI()
+    gui = ROTKXIGUI(True)
     gui.show()
     sys.exit(app.exec_())
 
