@@ -1,6 +1,7 @@
 import filecmp
 import os
 import shutil
+import signal
 import sqlite3
 import sys
 import tempfile
@@ -15,9 +16,7 @@ from PyQt5.QtWidgets import (QAction, QApplication, QComboBox, QFileDialog,
 from binary_parser.binary_parser import BinaryParser
 from constants import *
 
-
-def reverse_dict(d):
-    return {v: k for k, v in d.items()}
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
 class ROTKXIGUI(QMainWindow):
@@ -121,6 +120,23 @@ class ROTKXIGUI(QMainWindow):
         header.sectionClicked.connect(self.sort_table)
         header.setSectionsClickable(True)
 
+        table_widget.cellChanged.connect(self.cell_changed)
+
+    def cell_changed(self, row, col):
+        table_widget = self.sender()
+        if table_widget is None:
+            return
+        table_name = table_widget.objectName()
+        item = table_widget.item(row, col)
+        if item is None:
+            return
+        new_value = item.text()
+        orig_value = self.table_data[table_name][row][col]
+        if type(orig_value) == str:
+            self.table_data[table_name][row][col] = str(new_value)
+        else:
+            self.table_data[table_name][row][col] = int(new_value)
+
     def sort_table(self, logical_index):
         table_widget = self.table_widgets[-1]
 
@@ -189,7 +205,7 @@ class ROTKXIGUI(QMainWindow):
             # Retrieve the column names and data from the table
             cursor.execute(f"SELECT * FROM {table_name}")
             headers = [x[0] for x in cursor.description]
-            data = cursor.fetchall()
+            data = [list(x) for x in cursor.fetchall()]
             self.init_table_widget(table_name, headers, data)
             self.table_data[table_name] = data
 
@@ -255,7 +271,7 @@ class ROTKXIGUI(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    gui = ROTKXIGUI(True)
+    gui = ROTKXIGUI(False)
     gui.show()
     sys.exit(app.exec_())
 
