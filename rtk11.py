@@ -16,8 +16,6 @@ from PyQt5.QtWidgets import (QAction, QApplication, QComboBox, QFileDialog,
 from binary_parser.binary_parser import BinaryParser
 from constants import *
 
-signal.signal(signal.SIGINT, signal.SIG_DFL)
-
 
 class ROTKXIGUI(QMainWindow):
     def init_menubar(self):
@@ -28,20 +26,20 @@ class ROTKXIGUI(QMainWindow):
         # Add "Open Database" action
         self.open_file_action = QAction("&Open Database", self)
         self.open_file_action.setShortcut("Ctrl+O")
-        self.open_file_action.triggered.connect(self.open_database)
+        self.open_file_action.triggered.connect(self.open_file)
         self.file_menu.addAction(self.open_file_action)
 
         # Add "Save Database" action
         self.save_file_action = QAction("&Save Database", self)
         self.save_file_action.setShortcut("Ctrl+S")
-        self.save_file_action.triggered.connect(self.save_database)
+        self.save_file_action.triggered.connect(self.save_file)
         self.save_file_action.setEnabled(False)
         self.file_menu.addAction(self.save_file_action)
 
         # Add "Save As Database" action
         self.save_as_file_action = QAction("Save &As Database", self)
         self.save_as_file_action.setShortcut("Ctrl+Shift+S")
-        self.save_as_file_action.triggered.connect(self.save_as_database)
+        self.save_as_file_action.triggered.connect(self.save_as_file)
         self.save_as_file_action.setEnabled(False)
         self.file_menu.addAction(self.save_as_file_action)
 
@@ -82,7 +80,7 @@ class ROTKXIGUI(QMainWindow):
 
         self.new_scen_path = None
 
-        self.open_database(testing)
+        self.open_file(testing)
 
     def init_table_widget(self, table_name, headers, data):
         table_widget = QTableWidget(self)
@@ -96,21 +94,15 @@ class ROTKXIGUI(QMainWindow):
         table_widget.setRowCount(len(data))
         for i in range(len(data)):
             for j, colname in enumerate(headers):
+                cell_data = data[i][j]
                 if colname == "specialty":
-                    specialty_index = specialty_hex.index(data[i][j])
+                    specialty_index = specialty_hex.index(cell_data)
                     cell_data = specialty_options[specialty_index]
-                    options = specialty_options.values()
+                    combobox_options = specialty_options.values()
                 elif colname in col_map.keys():
-                    cell_data = col_map[colname][data[i][j]]
-                    options = col_map[colname].values()
-                else:
-                    cell_str = str(data[i][j])
-                    if cell_str.isnumeric() and cell_str.startswith('0') and not cell_str == '0':
-                        # Maintain leading zeroes
-                        cell_data = f"{int(cell_str):02}"
-                    else:
-                        cell_data = str(data[i][j])
-                cell_item = QTableWidgetItem(cell_data)
+                    cell_data = col_map[colname][cell_data]
+                    combobox_options = col_map[colname].values()
+                cell_item = QTableWidgetItem(str(cell_data))
                 cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
                 table_widget.setItem(i, j, cell_item)
 
@@ -171,7 +163,7 @@ class ROTKXIGUI(QMainWindow):
             table.setSortingEnabled(True)
             table.sortByColumn(0, self.sorting_order)
 
-    def open_database(self, testing=False):
+    def open_file(self, testing=False):
         """Opens a scenario file and parses the data into a database file for editing.
         """
         if testing:
@@ -214,9 +206,9 @@ class ROTKXIGUI(QMainWindow):
         self.save_as_file_action.setEnabled(True)
 
         if testing:
-            self.save_database(testing)
+            self.save_file(testing)
 
-    def save_database(self, testing=False):
+    def save_file(self, testing=False):
         """
         Saves the current state of the database to the scenario file.
         Will first prompt for the path to save to if it doesn't exist yet
@@ -225,7 +217,7 @@ class ROTKXIGUI(QMainWindow):
             self.new_scen_path = 'scenario/SCEN009.S11'
 
         if not self.new_scen_path:
-            self.save_as_database()
+            self.save_as_file()
             return
 
         conn = sqlite3.connect(self.db_path)
@@ -253,7 +245,7 @@ class ROTKXIGUI(QMainWindow):
             print(f"{self.old_scen_path} is equal to {self.new_scen_path}")
             exit()
 
-    def save_as_database(self):
+    def save_as_file(self):
         """
         Prompts the user for a scenario file before calling the regular save function.
         """
@@ -266,15 +258,16 @@ class ROTKXIGUI(QMainWindow):
         if self.old_scen_path != self.new_scen_path:
             shutil.copyfile(self.old_scen_path, self.new_scen_path)
 
-        self.save_database()
+        self.save_file()
 
 
 def main():
     app = QApplication(sys.argv)
-    gui = ROTKXIGUI(False)
+    gui = ROTKXIGUI(True)
     gui.show()
     sys.exit(app.exec_())
 
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     main()
