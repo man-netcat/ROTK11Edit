@@ -82,52 +82,40 @@ class ROTKXIGUI(QMainWindow):
 
         self.open_file(testing)
 
+    def init_cell(self, cell_data, colname):
+        cell_item = QTableWidgetItem()
+        if colname == "specialty":
+            specialty_index = specialty_hex.index(cell_data)
+            cell_data = specialty_options[specialty_index]
+            cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
+        elif colname in col_map.keys():
+            cell_data = col_map[colname][cell_data]
+            cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
+        else:
+            cell_data = str(cell_data)
+            cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
+        cell_item.setText(cell_data)
+        return cell_item
+
     def init_table_widget(self, table_name, headers, data):
         table_widget = QTableWidget(self)
         table_widget.setObjectName(table_name)
-        self.tab_widget.addTab(table_widget, table_name)
-        self.table_widgets.append(table_widget)
-
-        # Populate the table widget with the data
         table_widget.setColumnCount(len(headers))
         table_widget.setHorizontalHeaderLabels(headers)
         table_widget.setRowCount(len(data))
-        for i in range(len(data)):
-            for j, colname in enumerate(headers):
-                cell_data = data[i][j]
-                if colname == "specialty":
-                    specialty_index = specialty_hex.index(cell_data)
-                    cell_data = specialty_options[specialty_index]
-                    combobox_options = specialty_options.values()
-                elif colname in col_map.keys():
-                    cell_data = col_map[colname][cell_data]
-                    combobox_options = col_map[colname].values()
-                cell_item = QTableWidgetItem(str(cell_data))
-                cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
-                table_widget.setItem(i, j, cell_item)
-
         table_widget.setSortingEnabled(True)
 
         header = table_widget.horizontalHeader()
         header.sectionClicked.connect(self.sort_table)
         header.setSectionsClickable(True)
 
-        table_widget.cellChanged.connect(self.cell_changed)
+        for row in range(len(data)):
+            for col, colname in enumerate(headers):
+                cell_item = self.init_cell(data[row][col], colname)
+                table_widget.setItem(row, col, cell_item)
 
-    def cell_changed(self, row, col):
-        table_widget = self.sender()
-        if table_widget is None:
-            return
-        table_name = table_widget.objectName()
-        item = table_widget.item(row, col)
-        if item is None:
-            return
-        new_value = item.text()
-        orig_value = self.table_data[table_name][row][col]
-        if type(orig_value) == str:
-            self.table_data[table_name][row][col] = str(new_value)
-        else:
-            self.table_data[table_name][row][col] = int(new_value)
+        self.tab_widget.addTab(table_widget, table_name)
+        self.table_widgets.append(table_widget)
 
     def sort_table(self, logical_index):
         table_widget = self.table_widgets[-1]
@@ -148,17 +136,17 @@ class ROTKXIGUI(QMainWindow):
         for table in self.table_widgets:
             table.setSortingEnabled(False)
 
-            for i in range(table.rowCount()):
+            for row in range(table.rowCount()):
                 match_found = False
 
-                for j in range(table.columnCount()):
-                    cell_text = table.item(i, j).text().lower()
+                for col in range(table.columnCount()):
+                    cell_text = table.item(row, col).text().lower()
 
                     if search_text in cell_text:
                         match_found = True
                         break
 
-                table.setRowHidden(i, not match_found)
+                table.setRowHidden(row, not match_found)
 
             table.setSortingEnabled(True)
             table.sortByColumn(0, self.sorting_order)
@@ -194,6 +182,8 @@ class ROTKXIGUI(QMainWindow):
         table_names = [x[0] for x in cursor.fetchall()]
 
         for table_name in table_names:
+            if table_name == 'sqlite_sequence':
+                continue
             # Retrieve the column names and data from the table
             cursor.execute(f"SELECT * FROM {table_name}")
             headers = [x[0] for x in cursor.description]
@@ -225,8 +215,10 @@ class ROTKXIGUI(QMainWindow):
         for table_widget in self.table_widgets:
             table_name = table_widget.objectName()
             table_data = self.table_data[table_name]
-            headers = [table_widget.horizontalHeaderItem(
-                i).text() for i in range(table_widget.columnCount())]
+            headers = [
+                table_widget.horizontalHeaderItem(col).text()
+                for col in range(table_widget.columnCount())
+            ]
             placeholders = ','.join(['?'] * len(headers))
             for row in table_data:
                 conn.execute(
