@@ -143,7 +143,7 @@ class ROTKXIGUI(QMainWindow):
 
         def reverse(d): return {v: k for k, v in d.items()}
         if column_name == 'specialty':
-            pass
+            cell_data = reverse(specialty_options)[cell_data]
         elif column_name in col_map:
             cell_data = reverse(col_map[column_name])[cell_data]
         elif self.datatypes[table_name][column_name]['type'] == 'int':
