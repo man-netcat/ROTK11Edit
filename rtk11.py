@@ -2,10 +2,10 @@ import filecmp
 import os
 import shutil
 import signal
-import sqlite3
 import sys
 import tempfile
 from pprint import pprint
+from sqlite3 import connect
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
@@ -245,27 +245,26 @@ class ROTKXIGUI(QMainWindow):
                     'size': 0
                 }
 
-        conn = sqlite3.connect(self.db_path)
+        with connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table';")
+            table_names = [x[0] for x in cursor.fetchall()]
 
-        # Retrieve the tables in the database
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        table_names = [x[0] for x in cursor.fetchall()]
+            # Retrieve the tables in the database
+            for table_name in table_names:
+                if table_name == 'sqlite_sequence':
+                    continue
+                # Retrieve the column names and data from the table
+                cursor.execute(f"SELECT * FROM {table_name}")
+                headers = [x[0] for x in cursor.description]
+                data = [list(x) for x in cursor.fetchall()]
+                self.init_table_widget(table_name, headers, data)
+                self.table_data[table_name] = data
 
-        for table_name in table_names:
-            if table_name == 'sqlite_sequence':
-                continue
-            # Retrieve the column names and data from the table
-            cursor.execute(f"SELECT * FROM {table_name}")
-            headers = [x[0] for x in cursor.description]
-            data = [list(x) for x in cursor.fetchall()]
-            self.init_table_widget(table_name, headers, data)
-            self.table_data[table_name] = data
-        self.is_initialized = True
-
-        conn.close()
         self.save_file_action.setEnabled(True)
         self.save_as_file_action.setEnabled(True)
+        self.is_initialized = True
 
         if testing:
             self.save_file(testing)
@@ -282,22 +281,18 @@ class ROTKXIGUI(QMainWindow):
             self.save_as_file()
             return
 
-        conn = sqlite3.connect(self.db_path)
-
-        for table_widget in self.table_widgets:
-            table_name = table_widget.objectName()
-            table_data = self.table_data[table_name]
-            headers = [
-                table_widget.horizontalHeaderItem(col).text()
-                for col in range(table_widget.columnCount())
-            ]
-            placeholders = ','.join(['?'] * len(headers))
-            for row in table_data:
-                conn.execute(
-                    f"INSERT OR REPLACE INTO {table_name} ({','.join(headers)}) VALUES ({placeholders})", row)
-
-        conn.commit()
-        conn.close()
+        with connect(self.db_path, isolation_level=None) as conn:
+            for table_widget in self.table_widgets:
+                table_name = table_widget.objectName()
+                table_data = self.table_data[table_name]
+                headers = [
+                    table_widget.horizontalHeaderItem(col).text()
+                    for col in range(table_widget.columnCount())
+                ]
+                placeholders = ','.join(['?'] * len(headers))
+                for row in table_data:
+                    conn.execute(
+                        f"REPLACE INTO {table_name} ({','.join(headers)}) VALUES ({placeholders})", row)
 
         # This writes the data from the database back to the scenario file
         with BinaryParser('rtk11.lyt', encoding='shift-jis') as bp:
