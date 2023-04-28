@@ -1,4 +1,3 @@
-import difflib
 import filecmp
 import os
 import shutil
@@ -7,23 +6,22 @@ from binary_parser.binary_parser import BinaryParser
 
 
 def main():
-    scen2 = 'scenario/SCEN009.S11'
+    newscen = 'scenario/SCEN009.S11'
     db = '/tmp/rtk11.db'
     lyt = 'rtk11.lyt'
     for i in range(8):
-        scen1 = f'scenario/SCEN00{i}.S11'
-        print(scen1)
+        oldscen = f'scenario/SCEN00{i}.S11'
 
-        with BinaryParser(lyt) as bp:
+        with BinaryParser(lyt, encoding='shift-jis') as bp:
             if os.path.exists(db):
                 os.remove(db)
-            if os.path.exists(scen2):
-                os.remove(scen2)
-            bp.parse_file(scen1, db)
-            shutil.copyfile(scen1, scen2)
-            bp.write_back(scen2, db)
+            if os.path.exists(newscen):
+                os.remove(newscen)
+            bp.parse_file(oldscen, db)
+            shutil.copyfile(oldscen, newscen)
+            bp.write_back(newscen, db)
 
-        assert filecmp.cmp(scen1, scen2)
+        assert filecmp.cmp(oldscen, newscen)
     print("All tests passed")
 
 
