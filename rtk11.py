@@ -138,8 +138,8 @@ class ROTKXIGUI(QMainWindow):
         table_name = table_widget.objectName()
         column_name = table_widget.horizontalHeaderItem(col).text()
         cell_data = item.text()
-        print(
-            f"Cell ({row}, {col}) in {table_name} with column name {column_name} was modified with new value {cell_data}")
+        # print(
+        # f"Cell ({row}, {col}) in {table_name} with column name {column_name} was modified with new value {cell_data}")
 
         def reverse(d): return {v: k for k, v in d.items()}
         if column_name == 'specialty':
@@ -213,10 +213,25 @@ class ROTKXIGUI(QMainWindow):
             self.old_scen_path = 'scenario/SCEN000.S11'
         else:
             self.old_scen_path, _ = QFileDialog.getOpenFileName(
-                self, "Open Scenario File", "", "Scenario Files (*.s11)")
+                self, "Open Scenario File", "", "Scenario Files (*.s11 SAN11RES.BIN)")
 
             if not self.old_scen_path:
                 return
+
+        if self.old_scen_path.endswith("SAN11RES.BIN"):
+            self.version = 'PS2'
+            # List of scenario names
+            item, ok = QInputDialog.getItem(
+                self, "Select Scenario", "Select a scenario:", ps2_scenarios, 0, False)
+            if ok:
+                # Get the index of the selected item
+                start_offset = ps2_scenarios[item]
+            else:
+                return
+
+        else:
+            self.version = 'PC'
+            start_offset = 0
 
         self.tab_widget.clear()
 
@@ -226,7 +241,7 @@ class ROTKXIGUI(QMainWindow):
             os.remove(self.db_path)
 
         # This reads the data from the scenario file into the database
-        with BinaryParser('rtk11.lyt', encoding='shift-jis') as bp:
+        with BinaryParser('rtk11.lyt', encoding='shift-jis', start_offset=start_offset) as bp:
             bp.parse_file(self.old_scen_path, self.db_path)
             self.datatypes = {
                 tablename: {
@@ -275,7 +290,7 @@ class ROTKXIGUI(QMainWindow):
         Will first prompt for the path to save to if it doesn't exist yet
         """
         if testing:
-            self.new_scen_path = 'scenario/SCEN009.S11'
+            self.new_scen_path = 'scenario/SCENTST.S11'
 
         if not self.new_scen_path:
             self.save_as_file()

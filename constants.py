@@ -198,6 +198,7 @@ officer_ranks_map = {
     0x4e: "Officer",
     0x4f: "Officer",
     0x50: "None",
+    0xFF: "None"
 }
 
 growth_ability_map = {
@@ -1330,3 +1331,17 @@ col_map = {
     'dislikedofficer4': officer_map,
     'dislikedofficer5': officer_map,
 }
+
+ps2_scenarios = {
+    name: offset for offset, name in zip(
+        [0x1D3800 + 180224*i for i in range(10)],
+        ["Yellow Turbans", "Dong Zhou's Rise", "Rival Warlords", "Clash at Guan Du", "The Three Visits",
+         "Liu Bei in Shu", "Nanman Rebellion", "Rise of Heroes", "Lu Bu Campaign", "Power Struggle", "Country Basics", ])
+}
+# | {
+#     name: offset for offset, name in zip(
+#         [0x3FC808 + 118800*i for i in range(14)],
+#         ["Military Basics", "Going to Battle", "Traps & Facilities", "Techniques",
+#          "Capturing Cheng Du", "Hunting Dong Zhuo", "The Turbans' End", "Liu Bei Subjugation", "Guan Du Skirmish",
+#          "Huang Zu", "Mai Castle Escape", "Nanman Rebellion", "Defense of Jie Ting",])
+# }
