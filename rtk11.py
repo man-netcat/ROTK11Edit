@@ -84,7 +84,7 @@ class ROTKXIGUI(QMainWindow):
 
         self.open_file(testing)
 
-    def init_cell(self, cell_data, column_name):
+    def init_cell(self, cell_data, table_name, column_name):
         cell_item = QTableWidgetItem()
         if column_name == "specialty":
             specialty_index = specialty_hex.index(cell_data)
@@ -94,9 +94,12 @@ class ROTKXIGUI(QMainWindow):
             cell_text = col_map[column_name][cell_data]
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         else:
-            cell_text = str(cell_data)
             cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
-        cell_item.setText(cell_text)
+            if self.datatypes[table_name][column_name]['type'] == 'int':
+                cell_text = int(cell_data)
+            else:
+                cell_text = str(cell_data)
+        cell_item.setData(Qt.DisplayRole, cell_text)
         return cell_item
 
     def init_table_widget(self, table_name, headers, data):
@@ -115,12 +118,12 @@ class ROTKXIGUI(QMainWindow):
 
         for row in range(len(data)):
             for col, column_name in enumerate(headers):
-                if column_name == 'id' or self.datatypes[table_name][column_name]['type'] == 'int':
+                if self.datatypes[table_name][column_name]['type'] == 'int':
                     cell_data = int(data[row][col])
                 elif self.datatypes[table_name][column_name]['type'] == 'str':
                     # Replace null bytes
                     cell_data = str(data[row][col].replace('\x00', ''))
-                cell_item = self.init_cell(cell_data, column_name)
+                cell_item = self.init_cell(cell_data, table_name, column_name)
                 table_widget.setItem(row, col, cell_item)
 
         self.tab_widget.addTab(table_widget, table_name)
@@ -143,7 +146,7 @@ class ROTKXIGUI(QMainWindow):
             pass
         elif column_name in col_map:
             cell_data = reverse(col_map[column_name])[cell_data]
-        elif column_name == 'id' or self.datatypes[table_name][column_name]['type'] == 'int':
+        elif self.datatypes[table_name][column_name]['type'] == 'int':
             cell_data = int(cell_data)
 
         self.table_data[table_name][row][col] = cell_data
@@ -236,6 +239,11 @@ class ROTKXIGUI(QMainWindow):
                 }
                 for tablename, tabledata in bp.data.items()
             }
+            for table in self.datatypes.values():
+                table['id'] = {
+                    'type': 'int',
+                    'size': 0
+                }
 
         conn = sqlite3.connect(self.db_path)
 
