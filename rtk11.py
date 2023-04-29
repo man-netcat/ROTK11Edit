@@ -1,4 +1,3 @@
-import filecmp
 import os
 import shutil
 import signal
@@ -222,13 +221,13 @@ class ROTKXIGUI(QMainWindow):
                 self, "Select Scenario", "Select a scenario:", ps2_scenarios, 0, False)
             if ok:
                 # Get the index of the selected item
-                file_offset = ps2_scenarios[item]
+                self.file_offset = ps2_scenarios[item]
             else:
                 return
 
         else:
             self.version = 'PC'
-            file_offset = 0
+            self.file_offset = 0
 
         self.tab_widget.clear()
 
@@ -238,7 +237,7 @@ class ROTKXIGUI(QMainWindow):
             os.remove(self.db_path)
 
         # This reads the data from the scenario file into the database
-        with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=file_offset) as bp:
+        with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=self.file_offset) as bp:
             bp.parse_file(self.old_scen_path, self.db_path)
             self.datatypes = {
                 tablename: {
@@ -302,7 +301,7 @@ class ROTKXIGUI(QMainWindow):
                         f"REPLACE INTO {table_name} ({','.join(headers)}) VALUES ({placeholders})", row)
 
         # This writes the data from the database back to the scenario file
-        with BinaryParser('rtk11.lyt', encoding='shift-jis') as bp:
+        with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=self.file_offset) as bp:
             bp.write_back(self.new_scen_path, self.db_path)
 
     def save_as_file(self):
@@ -323,7 +322,7 @@ class ROTKXIGUI(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    gui = ROTKXIGUI(False)
+    gui = ROTKXIGUI()
     gui.show()
     sys.exit(app.exec_())
 
