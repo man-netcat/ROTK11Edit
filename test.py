@@ -6,7 +6,7 @@ from binary_parser.binary_parser import BinaryParser
 
 
 def main():
-    newscen = 'scenario/SCEN009.S11'
+    newscen = 'scenario/SCENTST.S11'
     db = '/tmp/rtk11.db'
     lyt = 'rtk11.lyt'
     for i in range(8):

@@ -63,7 +63,7 @@ class ROTKXIGUI(QMainWindow):
         self.filter_action.triggered.connect(self.filter_table)
         self.filter_toolbar.addAction(self.filter_action)
 
-    def __init__(self, testing=False):
+    def __init__(self):
         super().__init__()
         self.setWindowTitle("ROTK XI Editor")
         self.setWindowIcon(QIcon("icon.png"))
@@ -82,7 +82,7 @@ class ROTKXIGUI(QMainWindow):
         self.new_scen_path = None
         self.is_initialized = False
 
-        self.open_file(testing)
+        self.open_file()
 
     def init_cell(self, cell_data, table_name, column_name):
         cell_item = QTableWidgetItem()
@@ -206,17 +206,14 @@ class ROTKXIGUI(QMainWindow):
             table.setSortingEnabled(True)
             table.sortByColumn(0, self.sorting_order)
 
-    def open_file(self, testing=False):
+    def open_file(self):
         """Opens a scenario file and parses the data into a database file for editing.
         """
-        if testing:
-            self.old_scen_path = 'scenario/SCEN000.S11'
-        else:
-            self.old_scen_path, _ = QFileDialog.getOpenFileName(
-                self, "Open Scenario File", "", "Scenario Files (*.s11 SAN11RES.BIN)")
+        self.old_scen_path, _ = QFileDialog.getOpenFileName(
+            self, "Open Scenario File", "", "Scenario Files (*.s11 SAN11RES.BIN)")
 
-            if not self.old_scen_path:
-                return
+        if not self.old_scen_path:
+            return
 
         if self.old_scen_path.endswith("SAN11RES.BIN"):
             self.version = 'PS2'
@@ -225,13 +222,13 @@ class ROTKXIGUI(QMainWindow):
                 self, "Select Scenario", "Select a scenario:", ps2_scenarios, 0, False)
             if ok:
                 # Get the index of the selected item
-                start_offset = ps2_scenarios[item]
+                file_offset = ps2_scenarios[item]
             else:
                 return
 
         else:
             self.version = 'PC'
-            start_offset = 0
+            file_offset = 0
 
         self.tab_widget.clear()
 
@@ -241,7 +238,7 @@ class ROTKXIGUI(QMainWindow):
             os.remove(self.db_path)
 
         # This reads the data from the scenario file into the database
-        with BinaryParser('rtk11.lyt', encoding='shift-jis', start_offset=start_offset) as bp:
+        with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=file_offset) as bp:
             bp.parse_file(self.old_scen_path, self.db_path)
             self.datatypes = {
                 tablename: {
@@ -281,16 +278,11 @@ class ROTKXIGUI(QMainWindow):
         self.save_as_file_action.setEnabled(True)
         self.is_initialized = True
 
-        if testing:
-            self.save_file(testing)
-
-    def save_file(self, testing=False):
+    def save_file(self):
         """
         Saves the current state of the database to the scenario file.
         Will first prompt for the path to save to if it doesn't exist yet
         """
-        if testing:
-            self.new_scen_path = 'scenario/SCENTST.S11'
 
         if not self.new_scen_path:
             self.save_as_file()
@@ -312,12 +304,6 @@ class ROTKXIGUI(QMainWindow):
         # This writes the data from the database back to the scenario file
         with BinaryParser('rtk11.lyt', encoding='shift-jis') as bp:
             bp.write_back(self.new_scen_path, self.db_path)
-
-        if testing:
-            assert filecmp.cmp(self.old_scen_path, self.new_scen_path)
-            print("Assertion complete")
-            print(f"{self.old_scen_path} is equal to {self.new_scen_path}")
-            exit()
 
     def save_as_file(self):
         """
