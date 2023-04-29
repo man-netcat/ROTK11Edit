@@ -7,11 +7,11 @@ from pprint import pprint
 from sqlite3 import connect
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QTextOption
 from PyQt5.QtWidgets import (QAction, QApplication, QComboBox, QFileDialog,
                              QInputDialog, QLineEdit, QMainWindow,
-                             QStyledItemDelegate, QTableWidget,
-                             QTableWidgetItem, QTabWidget, QToolBar)
+                             QTableWidget, QTableWidgetItem, QTabWidget,
+                             QToolBar)
 
 from binary_parser.binary_parser import BinaryParser
 from constants import *
@@ -99,6 +99,8 @@ class ROTKXIGUI(QMainWindow):
             else:
                 cell_text = str(cell_data)
         cell_item.setData(Qt.DisplayRole, cell_text)
+        cell_item.setTextAlignment(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        cell_item.setTextAlignment(Qt.AlignLeft)
         return cell_item
 
     def init_table_widget(self, table_name, headers, data):
@@ -173,7 +175,7 @@ class ROTKXIGUI(QMainWindow):
         item, ok = QInputDialog.getItem(
             self, "Choose option", "Select an option:", options, current=current_index)
 
-        if ok and item:
+        if ok and item and item in options:
             cell_item.setText(item)
 
     def sort_table(self, logical_index):

@@ -1330,6 +1330,19 @@ col_map = {
     'dislikedofficer3': officer_map,
     'dislikedofficer4': officer_map,
     'dislikedofficer5': officer_map,
+    'affinity': affinity_map,
+    'skill': skill_map,
+    'debatestyle': debate_map,
+    'voice': voice_map,
+    'location': city_map,
+    'character': character_map,
+    'tone': tone_map,
+    'spearaffinity': affinity_map,
+    'pikeaffinity': affinity_map,
+    'bowaffinity': affinity_map,
+    'cavalryaffinity': affinity_map,
+    'siegeaffinity': affinity_map,
+    'navyaffinity': affinity_map,
 }
 
 ps2_scenarios = {
