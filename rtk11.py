@@ -1,17 +1,20 @@
+from operator import ior
 import os
 import shutil
 import signal
 import sys
 import tempfile
+from functools import reduce
 from pprint import pprint
 from sqlite3 import connect
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QTextOption
-from PyQt5.QtWidgets import (QAction, QApplication, QComboBox, QFileDialog,
-                             QInputDialog, QLineEdit, QMainWindow,
+from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QComboBox,
+                             QDialog, QFileDialog, QInputDialog, QLabel,
+                             QLineEdit, QMainWindow, QPushButton, QScrollArea,
                              QTableWidget, QTableWidgetItem, QTabWidget,
-                             QToolBar)
+                             QToolBar, QVBoxLayout, QWidget)
 
 from binary_parser.binary_parser import BinaryParser
 from constants import *
@@ -89,18 +92,21 @@ class ROTKXIGUI(QMainWindow):
             specialty_index = specialty_hex.index(cell_data)
             cell_text = specialty_options[specialty_index]
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
+        elif column_name == "alliance":
+            cell_text = "Edit"
+            cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         elif column_name in col_map:
             cell_text = col_map[column_name][cell_data]
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         else:
             cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
-            if self.datatypes[table_name][column_name]['type'] == 'int':
+            if self.datatypes[table_name][column_name] == 'int':
                 cell_text = int(cell_data)
             else:
                 cell_text = str(cell_data)
         cell_item.setData(Qt.DisplayRole, cell_text)
         cell_item.setTextAlignment(QTextOption.WrapAtWordBoundaryOrAnywhere)
-        cell_item.setTextAlignment(Qt.AlignLeft)
+        cell_item.setTextAlignment(Qt.AlignVCenter)
         return cell_item
 
     def init_table_widget(self, table_name, headers, data):
@@ -110,7 +116,7 @@ class ROTKXIGUI(QMainWindow):
         table_widget.setHorizontalHeaderLabels(headers)
         table_widget.setRowCount(len(data))
         table_widget.setSortingEnabled(True)
-        table_widget.cellDoubleClicked.connect(self.choose_option)
+        table_widget.cellDoubleClicked.connect(self.handle_doubleclick)
         table_widget.itemChanged.connect(self.cell_changed)
 
         header = table_widget.horizontalHeader()
@@ -119,9 +125,9 @@ class ROTKXIGUI(QMainWindow):
 
         for row in range(len(data)):
             for col, column_name in enumerate(headers):
-                if self.datatypes[table_name][column_name]['type'] == 'int':
+                if self.datatypes[table_name][column_name] == 'int':
                     cell_data = int(data[row][col])
-                elif self.datatypes[table_name][column_name]['type'] == 'str':
+                elif self.datatypes[table_name][column_name] == 'str':
                     # Replace null bytes
                     cell_data = str(data[row][col].replace('\x00', ''))
                 cell_item = self.init_cell(cell_data, table_name, column_name)
@@ -145,26 +151,32 @@ class ROTKXIGUI(QMainWindow):
         def reverse(d): return {v: k for k, v in d.items()}
         if column_name == 'specialty':
             cell_data = reverse(specialty_options)[cell_data]
+        elif column_name == 'alliance':
+            return
         elif column_name in col_map:
             cell_data = reverse(col_map[column_name])[cell_data]
-        elif self.datatypes[table_name][column_name]['type'] == 'int':
+        elif self.datatypes[table_name][column_name] == 'int':
             cell_data = int(cell_data)
 
         self.table_data[table_name][row][col] = cell_data
 
-    def choose_option(self, row, col):
+    def handle_doubleclick(self, row, col):
         current_tab = self.tab_widget.currentIndex()
         current_table = self.table_widgets[current_tab]
         cell_item = current_table.item(row, col)
         column_name = current_table.horizontalHeaderItem(col).text()
-
         if column_name == 'specialty':
             options = specialty_options.values()
+            self.choose_option(cell_item, options)
+        elif column_name == 'alliance':
+            self.alliance(row, col)
         elif column_name in col_map:
             options = col_map[column_name].values()
+            self.choose_option(cell_item, options)
         else:
             return
 
+    def choose_option(self, cell_item, options):
         combo_box = QComboBox()
         combo_box.addItems(options)
         combo_box.setEditText(cell_item.text())
@@ -177,6 +189,54 @@ class ROTKXIGUI(QMainWindow):
 
         if ok and item and item in options:
             cell_item.setText(item)
+
+    def alliance(self, row, col):
+        dialog = QDialog()
+        dialog.setWindowTitle('Alliances')
+
+        scroll_area = QScrollArea(dialog)
+        scroll_area.setWidgetResizable(True)
+        dialog_layout = QVBoxLayout(dialog)
+        dialog_layout.addWidget(scroll_area)
+
+        checkboxes_widget = QWidget()
+        checkboxes_layout = QVBoxLayout(checkboxes_widget)
+
+        alliance_value = self.table_data['force'][row][col]
+        force_rulers = [force[3] for force in self.table_data['force']]
+        checkboxes = []
+
+        for i, ruler in enumerate(force_rulers):
+            ruler_name = officer_map[ruler]
+            checkbox = QCheckBox(f'{ruler_name}')
+
+            if alliance_value & (1 << i):
+                checkbox.setChecked(True)
+
+            checkboxes.append(checkbox)
+
+            if ruler_name != 'Unknown':
+                checkboxes_layout.addWidget(checkbox)
+
+        checkboxes_widget.setLayout(checkboxes_layout)
+        scroll_area.setWidget(checkboxes_widget)
+
+        button = QPushButton('OK')
+        button.clicked.connect(dialog.accept)
+        dialog_layout.addWidget(button)
+
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        ruler_ids = [i for i, checkbox in enumerate(
+            checkboxes) if checkbox.isChecked()]
+
+        ruler_shifted = [1 << i for i in ruler_ids]
+
+        new_alliance_value = reduce(ior, ruler_shifted, 0)
+
+        for ruler_id in ruler_ids:
+            self.table_data['force'][ruler_id][col] = new_alliance_value
 
     def sort_table(self, logical_index):
         table_widget = self.table_widgets[-1]
@@ -210,6 +270,7 @@ class ROTKXIGUI(QMainWindow):
     def open_file(self):
         """Opens a scenario file and parses the data into a database file for editing.
         """
+        self.is_initialized = False
         self.old_scen_path, _ = QFileDialog.getOpenFileName(
             self, "Open Scenario File", "", "Scenario Files (*.s11 SAN11RES.BIN)")
 
@@ -243,20 +304,14 @@ class ROTKXIGUI(QMainWindow):
             bp.parse_file(self.old_scen_path, self.db_path)
             self.datatypes = {
                 tablename: {
-                    column[0]: {
-                        'type': column[1],
-                        'size': column[2]
-                    }
+                    column[0]: column[1]
                     for section in tabledata['sections']
                     for column in section['data']
                 }
                 for tablename, tabledata in bp.data.items()
             }
             for table in self.datatypes.values():
-                table['id'] = {
-                    'type': 'int',
-                    'size': 0
-                }
+                table['id'] = 'int'
 
         with connect(self.db_path) as conn:
             cursor = conn.cursor()
