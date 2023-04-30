@@ -78,7 +78,7 @@ class ROTKXIGUI(QMainWindow):
         self.setCentralWidget(self.tab_widget)
 
         self.table_widgets: list[QTableWidget] = []
-        self.table_data = {}
+        self.table_datas = {}
         self.sorting_order = Qt.AscendingOrder
 
         self.new_scen_path = None
@@ -86,21 +86,21 @@ class ROTKXIGUI(QMainWindow):
 
         self.open_file()
 
-    def init_cell(self, cell_data, table_name, column_name):
+    def init_cell(self, cell_data, table_name, col_name):
         cell_item = QTableWidgetItem()
-        if column_name == "specialty":
-            specialty_index = specialty_hex.index(cell_data)
-            cell_text = specialty_options[specialty_index]
+        if col_name == "specialty":
+            specialty_idx = specialty_hex.index(cell_data)
+            cell_text = specialty_options[specialty_idx]
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
-        elif column_name == "alliance":
+        elif col_name == "alliance":
             cell_text = "Edit"
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
-        elif column_name in col_map:
-            cell_text = col_map[column_name][cell_data]
+        elif col_name in col_map:
+            cell_text = col_map[col_name][cell_data]
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         else:
             cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
-            if self.datatypes[table_name][column_name] == 'int':
+            if self.datatypes[table_name][col_name] == 'int':
                 cell_text = int(cell_data)
             else:
                 cell_text = str(cell_data)
@@ -109,12 +109,12 @@ class ROTKXIGUI(QMainWindow):
         cell_item.setTextAlignment(Qt.AlignVCenter)
         return cell_item
 
-    def init_table_widget(self, table_name, headers, data):
+    def init_table_widget(self, table_name, col_names, table_data):
         table_widget = QTableWidget(self)
         table_widget.setObjectName(table_name)
-        table_widget.setColumnCount(len(headers))
-        table_widget.setHorizontalHeaderLabels(headers)
-        table_widget.setRowCount(len(data))
+        table_widget.setColumnCount(len(col_names))
+        table_widget.setHorizontalHeaderLabels(col_names)
+        table_widget.setRowCount(len(table_data))
         table_widget.setSortingEnabled(True)
         table_widget.cellDoubleClicked.connect(self.handle_doubleclick)
         table_widget.itemChanged.connect(self.cell_changed)
@@ -123,55 +123,59 @@ class ROTKXIGUI(QMainWindow):
         header.sectionClicked.connect(self.sort_table)
         header.setSectionsClickable(True)
 
-        for row in range(len(data)):
-            for col, column_name in enumerate(headers):
-                if self.datatypes[table_name][column_name] == 'int':
-                    cell_data = int(data[row][col])
-                elif self.datatypes[table_name][column_name] == 'str':
+        for row_idx in range(len(table_data)):
+            for col_idx, col_name in enumerate(col_names):
+                cell_data = table_data[row_idx][col_idx]
+                if self.datatypes[table_name][col_name] == 'int':
+                    cell_data = int(cell_data)
+                elif self.datatypes[table_name][col_name] == 'str':
                     # Replace null bytes
-                    cell_data = str(data[row][col].replace('\x00', ''))
-                cell_item = self.init_cell(cell_data, table_name, column_name)
-                table_widget.setItem(row, col, cell_item)
+                    cell_data = cell_data.replace('\x00', '')
+                cell_item = self.init_cell(cell_data, table_name, col_name)
+                table_widget.setItem(row_idx, col_idx, cell_item)
 
         self.tab_widget.addTab(table_widget, table_name)
         self.table_widgets.append(table_widget)
 
+    def get_col_name(self, table_widget, col_idx):
+        return table_widget.horizontalHeaderItem(col_idx).text()
+
     def cell_changed(self, item):
         if not self.is_initialized:
             return
-        row = item.row()
-        col = item.column()
+        row_idx = item.row_idx()
+        col_idx = item.column()
         table_widget = item.tableWidget()
         table_name = table_widget.objectName()
-        column_name = table_widget.horizontalHeaderItem(col).text()
+        col_name = self.get_col_name(table_widget, col_idx)
         cell_data = item.text()
         # print(
-        # f"Cell ({row}, {col}) in {table_name} with column name {column_name} was modified with new value {cell_data}")
+        # f"Cell ({row_idx}, {col_idx}) in {table_name} with column name {col_name} was modified with new value {cell_data}")
 
         def reverse(d): return {v: k for k, v in d.items()}
-        if column_name == 'specialty':
+        if col_name == 'specialty':
             cell_data = reverse(specialty_options)[cell_data]
-        elif column_name == 'alliance':
+        elif col_name == 'alliance':
             return
-        elif column_name in col_map:
-            cell_data = reverse(col_map[column_name])[cell_data]
-        elif self.datatypes[table_name][column_name] == 'int':
+        elif col_name in col_map:
+            cell_data = reverse(col_map[col_name])[cell_data]
+        elif self.datatypes[table_name][col_name] == 'int':
             cell_data = int(cell_data)
 
-        self.table_data[table_name][row][col] = cell_data
+        self.table_datas[table_name][row_idx][col_idx] = cell_data
 
-    def handle_doubleclick(self, row, col):
+    def handle_doubleclick(self, row_idx, col_idx):
         current_tab = self.tab_widget.currentIndex()
         current_table = self.table_widgets[current_tab]
-        cell_item = current_table.item(row, col)
-        column_name = current_table.horizontalHeaderItem(col).text()
-        if column_name == 'specialty':
+        cell_item = current_table.item(row_idx, col_idx)
+        col_name = self.get_col_name(current_table, col_idx)
+        if col_name == 'specialty':
             options = specialty_options.values()
             self.choose_option(cell_item, options)
-        elif column_name == 'alliance':
-            self.alliance(row, col)
-        elif column_name in col_map:
-            options = col_map[column_name].values()
+        elif col_name == 'alliance':
+            self.alliance(row_idx, col_idx)
+        elif col_name in col_map:
+            options = col_map[col_name].values()
             self.choose_option(cell_item, options)
         else:
             return
@@ -190,7 +194,7 @@ class ROTKXIGUI(QMainWindow):
         if ok and item and item in options:
             cell_item.setText(item)
 
-    def alliance(self, row, col):
+    def alliance(self, row_idx, col_idx):
         dialog = QDialog()
         dialog.setWindowTitle('Alliances')
 
@@ -202,8 +206,8 @@ class ROTKXIGUI(QMainWindow):
         checkboxes_widget = QWidget()
         checkboxes_layout = QVBoxLayout(checkboxes_widget)
 
-        alliance_value = self.table_data['force'][row][col]
-        force_rulers = [force[3] for force in self.table_data['force']]
+        alliance_value = self.table_datas['force'][row_idx][col_idx]
+        force_rulers = [force[3] for force in self.table_datas['force']]
         checkboxes = []
 
         for i, ruler in enumerate(force_rulers):
@@ -236,12 +240,12 @@ class ROTKXIGUI(QMainWindow):
         new_alliance_value = reduce(ior, ruler_shifted, 0)
 
         for ruler_id in ruler_ids:
-            self.table_data['force'][ruler_id][col] = new_alliance_value
+            self.table_datas['force'][ruler_id][col_idx] = new_alliance_value
 
-    def sort_table(self, logical_index):
+    def sort_table(self, col_idx):
         table_widget = self.table_widgets[-1]
         self.sorting_order = Qt.DescendingOrder if self.sorting_order == Qt.AscendingOrder else Qt.AscendingOrder
-        table_widget.sortItems(logical_index, self.sorting_order)
+        table_widget.sortItems(col_idx, self.sorting_order)
 
         # Update sorting_order attribute
         self.sorting_order = table_widget.horizontalHeader().sortIndicatorOrder()
@@ -252,17 +256,17 @@ class ROTKXIGUI(QMainWindow):
         for table in self.table_widgets:
             table.setSortingEnabled(False)
 
-            for row in range(table.rowCount()):
+            for row_idx in range(table.rowCount()):
                 match_found = False
 
-                for col in range(table.columnCount()):
-                    cell_text = table.item(row, col).text().lower()
+                for col_idx in range(table.columnCount()):
+                    cell_text = table.item(row_idx, col_idx).text().lower()
 
                     if search_text in cell_text:
                         match_found = True
                         break
 
-                table.setRowHidden(row, not match_found)
+                table.setRowHidden(row_idx, not match_found)
 
             table.setSortingEnabled(True)
             table.sortByColumn(0, self.sorting_order)
@@ -304,9 +308,9 @@ class ROTKXIGUI(QMainWindow):
             bp.parse_file(self.old_scen_path, self.db_path)
             self.datatypes = {
                 tablename: {
-                    column[0]: column[1]
+                    col_idx[0]: col_idx[1]
                     for section in tabledata['sections']
-                    for column in section['data']
+                    for col_idx in section['data']
                 }
                 for tablename, tabledata in bp.data.items()
             }
@@ -325,10 +329,10 @@ class ROTKXIGUI(QMainWindow):
                     continue
                 # Retrieve the column names and data from the table
                 cursor.execute(f"SELECT * FROM {table_name}")
-                headers = [x[0] for x in cursor.description]
-                data = [list(x) for x in cursor.fetchall()]
-                self.init_table_widget(table_name, headers, data)
-                self.table_data[table_name] = data
+                col_names = [x[0] for x in cursor.description]
+                table_data = [list(x) for x in cursor.fetchall()]
+                self.init_table_widget(table_name, col_names, table_data)
+                self.table_datas[table_name] = table_data
 
         self.save_file_action.setEnabled(True)
         self.save_as_file_action.setEnabled(True)
@@ -347,15 +351,15 @@ class ROTKXIGUI(QMainWindow):
         with connect(self.db_path, isolation_level=None) as conn:
             for table_widget in self.table_widgets:
                 table_name = table_widget.objectName()
-                table_data = self.table_data[table_name]
-                headers = [
-                    table_widget.horizontalHeaderItem(col).text()
-                    for col in range(table_widget.columnCount())
+                table_data = self.table_datas[table_name]
+                col_names = [
+                    self.get_col_name(table_widget, col_idx)
+                    for col_idx in range(table_widget.columnCount())
                 ]
-                placeholders = ','.join(['?'] * len(headers))
-                for row in table_data:
+                placeholders = ','.join(['?'] * len(col_names))
+                for row_idx in table_data:
                     conn.execute(
-                        f"REPLACE INTO {table_name} ({','.join(headers)}) VALUES ({placeholders})", row)
+                        f"REPLACE INTO {table_name} ({','.join(col_names)}) VALUES ({placeholders})", row_idx)
 
         # This writes the data from the database back to the scenario file
         with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=self.file_offset) as bp:
