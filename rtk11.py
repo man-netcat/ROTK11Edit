@@ -21,6 +21,10 @@ from binary_parser.binary_parser import BinaryParser
 from constants import *
 
 
+class Unimplemented(Exception):
+    pass
+
+
 class ROTKXIGUI(QMainWindow):
     def init_menubar(self):
         self.menubar = self.menuBar()
@@ -96,6 +100,9 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "alliance":
             cell_text = "Edit"
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
+        elif col_name in officer_columns:
+            cell_text = self.get_officer_name(cell_data)
+            cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         elif col_name in col_map:
             cell_text = col_map[col_name][cell_data]
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
@@ -138,11 +145,17 @@ class ROTKXIGUI(QMainWindow):
         self.tab_widget.addTab(table_widget, table_name)
         self.table_widgets.append(table_widget)
 
-    def get_col_name(self, table_widget, col_idx):
-        return table_widget.horizontalHeaderItem(col_idx).text()
+    def officer_names(self):
+        return [
+            self.get_officer_name(officer_id)
+            for officer_id in range(NUM_OFFICERS)]
 
     def get_officer_name(self, officer_id):
-        officer_data = self.table_datas['officer'][officer_id]
+        if officer_id == 65535:
+            return "None"
+        elif officer_id >= 850:  # TODO Shared parent
+            return "Parent"
+        officer_data = self.table_datas['officer']['data'][officer_id]
         return (officer_data[Officer.FAMILYNAME] + ' ' + officer_data[Officer.GIVENNAME]).replace('\x00', '').strip()
 
     def cell_changed(self, item):
@@ -152,33 +165,43 @@ class ROTKXIGUI(QMainWindow):
         col_idx = item.column()
         table_widget = item.tableWidget()
         table_name = table_widget.objectName()
-        col_name = self.get_col_name(table_widget, col_idx)
-        cell_data = item.text()
+        col_name = self.table_datas[table_name]['col_names'][col_idx]
+        cell_text = item.text()
         # print(
-        # f"Cell ({row_idx}, {col_idx}) in {table_name} with column name {col_name} was modified with new value {cell_data}")
+        # f"Cell ({row_idx}, {col_idx}) in {table_name} with column name {col_name} was modified with new value {cell_text}")
 
         def reverse(d): return {v: k for k, v in d.items()}
         if col_name == 'specialty':
-            cell_data = reverse(specialty_options)[cell_data]
+            cell_data = reverse(specialty_options)[cell_text]
         elif col_name == 'alliance':
             return
+        elif col_name in officer_columns:
+            if cell_text == "None":
+                cell_data = 65535
+            else:
+                cell_data = self.officer_names().index(cell_text)
         elif col_name in col_map:
-            cell_data = reverse(col_map[col_name])[cell_data]
+            cell_data = reverse(col_map[col_name])[cell_text]
         elif self.datatypes[table_name][col_name] == 'int':
-            cell_data = int(cell_data)
+            cell_data = int(cell_text)
+        elif self.datatypes[table_name][col_name] == 'str':
+            cell_data = cell_text
 
-        self.table_datas[table_name][row_idx][col_idx] = cell_data
+        self.table_datas[table_name]['data'][row_idx][col_idx] = cell_data
 
     def handle_doubleclick(self, row_idx, col_idx):
         current_tab = self.tab_widget.currentIndex()
         current_table = self.table_widgets[current_tab]
         cell_item = current_table.item(row_idx, col_idx)
-        col_name = self.get_col_name(current_table, col_idx)
+        table_name = current_table.objectName()
+        col_name = self.table_datas[table_name]['col_names'][col_idx]
         if col_name == 'specialty':
             options = specialty_options.values()
             self.choose_option(cell_item, options)
         elif col_name == 'alliance':
             self.alliance(row_idx)
+        elif col_name in officer_columns:
+            self.choose_officer(cell_item)
         elif col_name in col_map:
             options = col_map[col_name].values()
             self.choose_option(cell_item, options)
@@ -199,11 +222,27 @@ class ROTKXIGUI(QMainWindow):
         if ok and item and item in options:
             cell_item.setText(item)
 
+    def choose_officer(self, cell_item):
+        combo_box = QComboBox()
+        options = self.officer_names() + ["None"]
+        combo_box.addItems(options)
+        combo_box.setEditText(cell_item.text())
+        combo_box.setInsertPolicy(QComboBox.NoInsert)
+
+        item, ok = QInputDialog.getItem(
+            self, "Choose option", "Select an option:", options, current=0)
+
+        if ok and item and item in options:
+            cell_item.setText(item)
+
     def create_alliance_value(self, force_numbers):
         return reduce(lambda x, y: x | (1 << y), force_numbers, 0)
 
     def parse_alliance_value(self, alliance_value):
         return [alliance_value for i in range(NUM_FORCES) if alliance_value & (1 << i)]
+
+    def get_values_by_enum(self, enum_value):
+        return [x[enum_value] for x in self.table_datas[enum_value.__class__.__name__.lower()]]
 
     def alliance(self, row_idx):
         dialog = QDialog()
@@ -220,15 +259,9 @@ class ROTKXIGUI(QMainWindow):
         alliance_value = self.table_datas['force'][row_idx][Force.ALLIANCE]
 
         force_numbers = self.parse_alliance_value(alliance_value)
-        alliance_values = [
-            force[Force.ALLIANCE]
-            for force in self.table_datas['force']]
-        force_rulers = [
-            force[Force.RULER]
-            for force in self.table_datas['force']]
-        allegiance_values = [
-            officer[Officer.ALLEGIANCE]
-            for officer in self.table_datas['officer']]
+        alliance_values = self.get_values_by_enum(Force.ALLIANCE)
+        force_rulers = self.get_values_by_enum(Force.RULER)
+        allegiance_values = self.get_values_by_enum(Officer.ALLEGIANCE)
         # ruler_allegiances = [allegiance_values[x]
         #                      if x != 65535 else 255 for x in force_rulers]
 
@@ -256,8 +289,9 @@ class ROTKXIGUI(QMainWindow):
         if dialog.exec_() != QDialog.Accepted:
             return
 
-        checked = [i for i, checkbox in enumerate(
-            checkboxes) if checkbox.isChecked()]
+        checked = [
+            i for i, checkbox in enumerate(checkboxes)
+            if checkbox.isChecked()]
 
         new_alliance_value = self.create_alliance_value(checked)
 
@@ -353,19 +387,22 @@ class ROTKXIGUI(QMainWindow):
 
             # Retrieve the tables in the database
             for table_name in table_names:
-                if table_name == 'sqlite_sequence':
-                    continue
                 # Retrieve the column names and data from the table
                 cursor.execute(f"SELECT * FROM {table_name}")
                 col_names = [x[0] for x in cursor.description]
                 table_data = [list(x) for x in cursor.fetchall()]
-                self.init_table_widget(table_name, col_names, table_data)
-                self.table_datas[table_name] = table_data
+                self.table_datas[table_name] = {}
+                self.table_datas[table_name]['data'] = table_data
+                self.table_datas[table_name]['col_names'] = col_names
 
-        self.officer_names = [
-            self.get_officer_name(i)
-            for i in range(NUM_OFFICERS)]
-        print(self.officer_names)
+            # Initialise table widgets
+            for table_name in table_names:
+                if table_name == 'sqlite_sequence':
+                    continue
+                self.init_table_widget(
+                    table_name,
+                    self.table_datas[table_name]['col_names'],
+                    self.table_datas[table_name]['data'])
 
         self.save_file_action.setEnabled(True)
         self.save_as_file_action.setEnabled(True)
@@ -384,11 +421,8 @@ class ROTKXIGUI(QMainWindow):
         with connect(self.db_path, isolation_level=None) as conn:
             for table_widget in self.table_widgets:
                 table_name = table_widget.objectName()
-                table_data = self.table_datas[table_name]
-                col_names = [
-                    self.get_col_name(table_widget, col_idx)
-                    for col_idx in range(table_widget.columnCount())
-                ]
+                table_data = self.table_datas[table_name]['data']
+                col_names = self.table_datas[table_name]['col_names']
                 placeholders = ','.join(['?'] * len(col_names))
                 for row_idx in table_data:
                     conn.execute(
