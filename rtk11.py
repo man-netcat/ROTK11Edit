@@ -1,4 +1,5 @@
-from operator import ior
+import math
+from operator import iand, ior
 import os
 import shutil
 import signal
@@ -140,10 +141,14 @@ class ROTKXIGUI(QMainWindow):
     def get_col_name(self, table_widget, col_idx):
         return table_widget.horizontalHeaderItem(col_idx).text()
 
+    def get_officer_name(self, officer_id):
+        officer_data = self.table_datas['officer'][officer_id]
+        return (officer_data[1] + ' ' + officer_data[2]).replace('\x00', '').strip()
+
     def cell_changed(self, item):
         if not self.is_initialized:
             return
-        row_idx = item.row_idx()
+        row_idx = item.row()
         col_idx = item.column()
         table_widget = item.tableWidget()
         table_name = table_widget.objectName()
@@ -173,7 +178,7 @@ class ROTKXIGUI(QMainWindow):
             options = specialty_options.values()
             self.choose_option(cell_item, options)
         elif col_name == 'alliance':
-            self.alliance(row_idx, col_idx)
+            self.alliance(row_idx)
         elif col_name in col_map:
             options = col_map[col_name].values()
             self.choose_option(cell_item, options)
@@ -194,7 +199,13 @@ class ROTKXIGUI(QMainWindow):
         if ok and item and item in options:
             cell_item.setText(item)
 
-    def alliance(self, row_idx, col_idx):
+    def create_alliance_value(self, force_numbers):
+        return reduce(lambda x, y: x | (1 << y), force_numbers, 0)
+
+    def parse_alliance_value(self, alliance_value):
+        return [alliance_value for i in range(NUM_FORCES) if alliance_value & (1 << i)]
+
+    def alliance(self, row_idx):
         dialog = QDialog()
         dialog.setWindowTitle('Alliances')
 
@@ -206,15 +217,28 @@ class ROTKXIGUI(QMainWindow):
         checkboxes_widget = QWidget()
         checkboxes_layout = QVBoxLayout(checkboxes_widget)
 
-        alliance_value = self.table_datas['force'][row_idx][col_idx]
-        force_rulers = [force[3] for force in self.table_datas['force']]
-        checkboxes = []
+        alliance_value = self.table_datas['force'][row_idx][Force.ALLIANCE]
+
+        force_numbers = self.parse_alliance_value(alliance_value)
+        alliance_values = [
+            force[Force.ALLIANCE]
+            for force in self.table_datas['force']]
+        force_rulers = [
+            force[Force.RULER]
+            for force in self.table_datas['force']]
+        allegiance_values = [
+            officer[Officer.ALLEGIANCE]
+            for officer in self.table_datas['officer']]
+        # ruler_allegiances = [allegiance_values[x]
+        #                      if x != 65535 else 255 for x in force_rulers]
+
+        checkboxes: list[QCheckBox] = []
 
         for i, ruler in enumerate(force_rulers):
             ruler_name = officer_map[ruler]
             checkbox = QCheckBox(f'{ruler_name}')
 
-            if alliance_value & (1 << i):
+            if i in force_numbers:
                 checkbox.setChecked(True)
 
             checkboxes.append(checkbox)
@@ -232,15 +256,19 @@ class ROTKXIGUI(QMainWindow):
         if dialog.exec_() != QDialog.Accepted:
             return
 
-        ruler_ids = [i for i, checkbox in enumerate(
+        checked = [i for i, checkbox in enumerate(
             checkboxes) if checkbox.isChecked()]
 
-        ruler_shifted = [1 << i for i in ruler_ids]
+        new_alliance_value = self.create_alliance_value(checked)
 
-        new_alliance_value = reduce(ior, ruler_shifted, 0)
-
-        for ruler_id in ruler_ids:
-            self.table_datas['force'][ruler_id][col_idx] = new_alliance_value
+        for i, alliance_value in enumerate(alliance_values):
+            if i in checked:
+                self.table_datas['force'][i][Force.ALLIANCE] = new_alliance_value
+            else:
+                self.table_datas['force'][i][Force.ALLIANCE] &= ~new_alliance_value
+            print(self.parse_alliance_value(
+                self.table_datas['force'][i][Force.ALLIANCE]))
+        print()
 
     def sort_table(self, col_idx):
         table_widget = self.table_widgets[-1]
@@ -282,7 +310,7 @@ class ROTKXIGUI(QMainWindow):
             return
 
         if self.old_scen_path.endswith("SAN11RES.BIN"):
-            self.version = 'PS2'
+            self.version = Version.PS2EN
             # List of scenario names
             item, ok = QInputDialog.getItem(
                 self, "Select Scenario", "Select a scenario:", ps2_scenarios, 0, False)
@@ -293,7 +321,7 @@ class ROTKXIGUI(QMainWindow):
                 return
 
         else:
-            self.version = 'PC'
+            self.version = Version.PCEN
             self.file_offset = 0
 
         self.tab_widget.clear()
@@ -333,6 +361,11 @@ class ROTKXIGUI(QMainWindow):
                 table_data = [list(x) for x in cursor.fetchall()]
                 self.init_table_widget(table_name, col_names, table_data)
                 self.table_datas[table_name] = table_data
+
+        self.officer_names = [
+            self.get_officer_name(i)
+            for i in range(NUM_OFFICERS)]
+        print(self.officer_names)
 
         self.save_file_action.setEnabled(True)
         self.save_as_file_action.setEnabled(True)

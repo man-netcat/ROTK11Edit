@@ -1,4 +1,166 @@
+from enum import Enum
 from collections import defaultdict
+
+NUM_OFFICERS = 850
+NUM_FORCES = 42
+
+
+class Version(Enum):
+    PCEN = 0
+    PCPUK = 1
+    PS2EN = 2
+    PS2PUK = 3
+
+    def __index__(self):
+        return self.value
+
+
+class Force(Enum):
+    ID = 0
+    DIFFICULTY = 1
+    DESC = 2
+    RULER = 3
+    STRATEGIST = 4
+    RELATIONSHIP1 = 5
+    RELATIONSHIP2 = 6
+    RELATIONSHIP3 = 7
+    RELATIONSHIP4 = 8
+    RELATIONSHIP5 = 9
+    RELATIONSHIP6 = 10
+    RELATIONSHIP7 = 11
+    RELATIONSHIP8 = 12
+    RELATIONSHIP9 = 13
+    RELATIONSHIP10 = 14
+    RELATIONSHIP11 = 15
+    RELATIONSHIP12 = 16
+    RELATIONSHIP13 = 17
+    RELATIONSHIP14 = 18
+    RELATIONSHIP15 = 19
+    RELATIONSHIP16 = 20
+    RELATIONSHIP17 = 21
+    RELATIONSHIP18 = 22
+    RELATIONSHIP19 = 23
+    RELATIONSHIP20 = 24
+    RELATIONSHIP21 = 25
+    RELATIONSHIP22 = 26
+    RELATIONSHIP23 = 27
+    RELATIONSHIP24 = 28
+    RELATIONSHIP25 = 29
+    RELATIONSHIP26 = 30
+    RELATIONSHIP27 = 31
+    RELATIONSHIP28 = 32
+    RELATIONSHIP29 = 33
+    RELATIONSHIP30 = 34
+    RELATIONSHIP31 = 35
+    RELATIONSHIP32 = 36
+    RELATIONSHIP33 = 37
+    RELATIONSHIP34 = 38
+    RELATIONSHIP35 = 39
+    RELATIONSHIP36 = 40
+    RELATIONSHIP37 = 41
+    RELATIONSHIP38 = 42
+    RELATIONSHIP39 = 43
+    RELATIONSHIP40 = 44
+    RELATIONSHIP41 = 45
+    RELATIONSHIP42 = 46
+    RELATIONSHIPQIANG = 47
+    RELATIONSHIPSHANYUE = 48
+    RELATIONSHIPWHUHUAN = 49
+    RELATIONSHIPNANMAN = 50
+    RELATIONSHIPBANDITS = 51
+    TITLE = 52
+    COUNTRY = 53
+    COLOUR = 54
+    GOAL = 55
+    ALLIANCE = 56
+    RESEARCH = 57
+    UNKNOWN = 58
+
+    def __index__(self):
+        return self.value
+
+
+class Officer(Enum):
+    ID = 0
+    FAMILYNAME = 1
+    GIVENNAME = 2
+    PORTRAIT = 3
+    SEX = 4
+    AVAILABLEDATE = 5
+    BIRTHDATE = 6
+    DEATHDATE = 7
+    DEATH = 8
+    CLAN = 9
+    FATHER = 10
+    MOTHER = 11
+    GENERATION = 12
+    SPOUSE = 13
+    SWORNBROTHER = 14
+    COMPATIBILITY = 15
+    LIKEDOFFICER1 = 16
+    LIKEDOFFICER2 = 17
+    LIKEDOFFICER3 = 18
+    LIKEDOFFICER4 = 19
+    LIKEDOFFICER5 = 20
+    DISLIKEDOFFICER1 = 21
+    DISLIKEDOFFICER2 = 22
+    DISLIKEDOFFICER3 = 23
+    DISLIKEDOFFICER4 = 24
+    DISLIKEDOFFICER5 = 25
+    ALLEGIANCE = 26
+    SERVICE = 27
+    LOCATION = 28
+    STATUS = 29
+    RANK = 30
+    DEPENDENCE = 31
+    LOYALTY = 32
+    DEEDS = 33
+    SPEARAFFINITY = 34
+    PIKEAFFINITY = 35
+    BOWAFFINITY = 36
+    CAVALRYAFFINITY = 37
+    SIEGEAFFINITY = 38
+    NAVYAFFINITY = 39
+    LDR = 40
+    WAR = 41
+    INT = 42
+    POL = 43
+    CHR = 44
+    LDRGROWTH = 45
+    WARGROWTH = 46
+    INTGROWTH = 47
+    POLGROWTH = 48
+    CHRGROWTH = 49
+    BIRTHPLACE = 50
+    SKILL = 51
+    DEBATESTYLE = 52
+    VIRTUE = 53
+    DESIRE = 54
+    RANKSELECTION = 55
+    CHARACTER = 56
+    VOICE = 57
+    TONE = 58
+    COURTIMPORTANCE = 59
+    STRATEGICTENDENCY = 60
+    LOCALAFFILIATION = 61
+    MODELSTANCE = 62
+    MODELHEADGEAR = 63
+    MODELFACE = 64
+    MODELBODY = 65
+    MODELCAPE = 66
+    MODELARMS = 67
+    MODELBOOTS = 68
+    MODELARROWS = 69
+    MODELUNKNOWN = 70
+    MODELBOW = 71
+    MODELWEAPON = 72
+    MODELHORSE = 73
+    PORTRAITAGE = 74
+    GUILECARDS = 75
+
+    def __index__(self):
+        return self.value
+
 
 # 0xFF = index 255 maps to white
 colour_map = {
@@ -360,19 +522,26 @@ court_importance_map = {
     0x02: "Important",
 }
 
-weapon_model_map = defaultdict(lambda: "Default", {
-    0x01: "Serpent Spear",
-    0x02: "Blue Dragon",
-    0x03: "Sky Scorcher",
+weapon_model_map = defaultdict(lambda: "Spear", {
+    0x01: "Blue Dragon",
+    0x02: "Serpent Spear",
+    0x03: "Crescent Halberd",
     0x04: "Arrow",
-    0x05: "Fan",
+    0x05: "Feather Fan",
 })
 
-horse_model_map = defaultdict(lambda: "Default", {
+horse_model_map = defaultdict(lambda: "Normal Horse", {
     0x01: "Red Hare",
     0x02: "Hex Mark",
     0x03: "Shadow Runner",
     0x04: "Gray Lightning",
+    0x05: "Firestar",
+})
+
+stance_map = defaultdict(lambda: "Normal", {
+    0x01: "Woman",
+    0x02: "Bulky Warrior",
+    0x03: "Zhuge Liang"
 })
 
 
@@ -1314,22 +1483,6 @@ col_map = {
     'rank': officer_ranks_map,
     'status': officer_status_map,
     'title': title_map,
-    'strategist': officer_map,
-    'ruler': officer_map,
-    'father': officer_map,
-    'mother': officer_map,
-    'spouse': officer_map,
-    'swornbrother': officer_map,
-    'likedofficer1': officer_map,
-    'likedofficer2': officer_map,
-    'likedofficer3': officer_map,
-    'likedofficer4': officer_map,
-    'likedofficer5': officer_map,
-    'dislikedofficer1': officer_map,
-    'dislikedofficer2': officer_map,
-    'dislikedofficer3': officer_map,
-    'dislikedofficer4': officer_map,
-    'dislikedofficer5': officer_map,
     'affinity': affinity_map,
     'skill': skill_map,
     'debatestyle': debate_map,
@@ -1343,7 +1496,30 @@ col_map = {
     'cavalryaffinity': affinity_map,
     'siegeaffinity': affinity_map,
     'navyaffinity': affinity_map,
+    'modelstance': stance_map,
+    'modelweapon': weapon_model_map,
+    'modelhorse': horse_model_map,
+    'country': country_map
 }
+
+officer_columns = [
+    'strategist',
+    'ruler',
+    'father',
+    'mother',
+    'spouse',
+    'swornbrother',
+    'likedofficer1',
+    'likedofficer2',
+    'likedofficer3',
+    'likedofficer4',
+    'likedofficer5',
+    'dislikedofficer1',
+    'dislikedofficer2',
+    'dislikedofficer3',
+    'dislikedofficer4',
+    'dislikedofficer5',
+]
 
 ps2_scenarios = {
     name: offset for offset, name in zip(
