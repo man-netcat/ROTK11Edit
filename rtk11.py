@@ -143,7 +143,7 @@ class ROTKXIGUI(QMainWindow):
 
     def get_officer_name(self, officer_id):
         officer_data = self.table_datas['officer'][officer_id]
-        return (officer_data[1] + ' ' + officer_data[2]).replace('\x00', '').strip()
+        return (officer_data[Officer.FAMILYNAME] + ' ' + officer_data[Officer.GIVENNAME]).replace('\x00', '').strip()
 
     def cell_changed(self, item):
         if not self.is_initialized:
