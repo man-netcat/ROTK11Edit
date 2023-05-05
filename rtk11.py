@@ -1,19 +1,17 @@
-import math
-from operator import iand, ior
 import os
 import shutil
 import signal
 import sys
 import tempfile
 from functools import reduce
-from pprint import pprint
 from sqlite3 import connect
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QTextOption
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QBrush, QColor, QIcon, QStandardItemModel, QTextOption
 from PyQt5.QtWidgets import (QAction, QApplication, QCheckBox, QComboBox,
-                             QDialog, QFileDialog, QInputDialog, QLabel,
-                             QLineEdit, QMainWindow, QPushButton, QScrollArea,
+                             QDialog, QFileDialog, QHBoxLayout, QInputDialog,
+                             QLabel, QLineEdit, QMainWindow, QProgressDialog,
+                             QPushButton, QScrollArea, QTableView,
                              QTableWidget, QTableWidgetItem, QTabWidget,
                              QToolBar, QVBoxLayout, QWidget)
 
@@ -23,6 +21,33 @@ from constants import *
 
 class Unimplemented(Exception):
     pass
+
+
+class SaveThread(QThread):
+    save_progress = pyqtSignal(int)
+
+    def __init__(self, db_path, scen_path, table_datas, file_offset, parentobj=None):
+        super().__init__(parentobj)
+        self.db_path = db_path
+        self.table_datas = table_datas
+        self.file_offset = file_offset
+        self.scen_path = scen_path
+
+    def run(self):
+        progress = 0
+        with connect(self.db_path, isolation_level=None) as conn:
+            for table_name, table_info in self.table_datas.items():
+                table_data = table_info['data']
+                col_names = table_info['col_names']
+                placeholders = ','.join(['?'] * len(col_names))
+                for row_idx in table_data:
+                    conn.execute(
+                        f"REPLACE INTO {table_name} ({','.join(col_names)}) VALUES ({placeholders})", row_idx)
+                    progress += 1
+                    self.save_progress.emit(progress)
+
+        with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=self.file_offset) as bp:
+            bp.write_back(self.scen_path, self.db_path)
 
 
 class ROTKXIGUI(QMainWindow):
@@ -93,7 +118,11 @@ class ROTKXIGUI(QMainWindow):
 
     def init_cell(self, cell_data, table_name, col_name):
         cell_item = QTableWidgetItem()
-        if col_name == "specialty":
+        if col_name == "colour":
+            color = QColor(colour_map[cell_data])
+            cell_text = ''
+            cell_item.setBackground(QBrush(color))
+        elif col_name == "specialty":
             specialty_idx = specialty_hex.index(cell_data)
             cell_text = specialty_options[specialty_idx]
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
@@ -108,7 +137,6 @@ class ROTKXIGUI(QMainWindow):
                 cell_text = self.get_officer_name(ruler_id)
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         elif col_name in officer_columns:
-
             cell_text = self.get_officer_name(cell_data)
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         elif col_name in col_map:
@@ -149,6 +177,8 @@ class ROTKXIGUI(QMainWindow):
                     cell_data = cell_data.replace('\x00', '')
                 cell_item = self.init_cell(cell_data, table_name, col_name)
                 table_widget.setItem(row_idx, col_idx, cell_item)
+                if "relationship" in col_name or col_name == "unknown":
+                    table_widget.setColumnHidden(col_idx, True)
 
         self.tab_widget.addTab(table_widget, table_name)
         self.table_widgets.append(table_widget)
@@ -428,7 +458,7 @@ class ROTKXIGUI(QMainWindow):
                 self.table_datas[table_name]['data'] = table_data
                 self.table_datas[table_name]['col_names'] = col_names
 
-            # Initialise table widgets
+            # Initialise table widgets``
             for table_name in table_names:
                 if table_name == 'sqlite_sequence':
                     continue
@@ -451,19 +481,27 @@ class ROTKXIGUI(QMainWindow):
             self.save_as_file()
             return
 
-        with connect(self.db_path, isolation_level=None) as conn:
-            for table_widget in self.table_widgets:
-                table_name = table_widget.objectName()
-                table_data = self.table_datas[table_name]['data']
-                col_names = self.table_datas[table_name]['col_names']
-                placeholders = ','.join(['?'] * len(col_names))
-                for row_idx in table_data:
-                    conn.execute(
-                        f"REPLACE INTO {table_name} ({','.join(col_names)}) VALUES ({placeholders})", row_idx)
+        total = sum([len(table_data['col_names'])
+                    for table_data in self.table_datas.values()])
 
-        # This writes the data from the database back to the scenario file
-        with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=self.file_offset) as bp:
-            bp.write_back(self.new_scen_path, self.db_path)
+        progress_dialog = QProgressDialog(
+            "Saving scenario file...", "Cancel", 0, total, self)
+        progress_dialog.setWindowModality(Qt.WindowModal)
+        progress_dialog.setAutoClose(False)
+        progress_dialog.setAutoReset(False)
+        progress_dialog.setMinimumDuration(0)
+
+        save_thread = SaveThread(
+            db_path=self.db_path,
+            scen_path=self.new_scen_path,
+            table_datas=self.table_datas,
+            file_offset=self.file_offset
+        )
+        save_thread.save_progress.connect(progress_dialog.setValue)
+        save_thread.finished.connect(progress_dialog.close)
+        save_thread.start()
+
+        progress_dialog.exec_()
 
     def save_as_file(self):
         """
