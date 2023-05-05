@@ -100,21 +100,28 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "alliance":
             cell_text = "Edit"
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
+        elif col_name == "force":
+            if cell_data == 0xFF:
+                cell_text = "None"
+            else:
+                ruler_id = self.get_values_by_enum(Force.RULER)[cell_data]
+                cell_text = self.get_officer_name(ruler_id)
+            cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         elif col_name in officer_columns:
+
             cell_text = self.get_officer_name(cell_data)
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
         elif col_name in col_map:
             cell_text = col_map[col_name][cell_data]
             cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
-        else:
-            cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
-            if self.datatypes[table_name][col_name] == 'int':
-                cell_text = int(cell_data)
-            else:
-                cell_text = str(cell_data)
+        elif self.datatypes[table_name][col_name] == 'int':
+            cell_text = int(cell_data)
+        elif self.datatypes[table_name][col_name] == 'str':
+            cell_text = str(cell_data)
+            cell_item.setTextAlignment(
+                QTextOption.WrapAtWordBoundaryOrAnywhere)
+            cell_item.setTextAlignment(Qt.AlignVCenter)
         cell_item.setData(Qt.DisplayRole, cell_text)
-        cell_item.setTextAlignment(QTextOption.WrapAtWordBoundaryOrAnywhere)
-        cell_item.setTextAlignment(Qt.AlignVCenter)
         return cell_item
 
     def init_table_widget(self, table_name, col_names, table_data):
@@ -124,8 +131,9 @@ class ROTKXIGUI(QMainWindow):
         table_widget.setHorizontalHeaderLabels(col_names)
         table_widget.setRowCount(len(table_data))
         table_widget.setSortingEnabled(True)
-        table_widget.cellDoubleClicked.connect(self.handle_doubleclick)
-        table_widget.itemChanged.connect(self.cell_changed)
+        table_widget.cellDoubleClicked.connect(self.on_cell_doubleclick)
+        table_widget.itemChanged.connect(self.on_cell_update)
+        table_widget.keyPressEvent = self.on_key_pressed
 
         header = table_widget.horizontalHeader()
         header.sectionClicked.connect(self.sort_table)
@@ -151,14 +159,38 @@ class ROTKXIGUI(QMainWindow):
             for officer_id in range(NUM_OFFICERS)]
 
     def get_officer_name(self, officer_id):
-        if officer_id == 65535:
+        if officer_id == 0xFFFF:
             return "None"
         elif officer_id >= 850:  # TODO Shared parent
             return "Parent"
         officer_data = self.table_datas['officer']['data'][officer_id]
         return (officer_data[Officer.FAMILYNAME] + ' ' + officer_data[Officer.GIVENNAME]).replace('\x00', '').strip()
 
-    def cell_changed(self, item):
+    def on_key_pressed(self, event):
+        table_widget = self.tab_widget.currentWidget()
+        item = table_widget.currentItem()
+        if not item:
+            return
+
+        row = item.row()
+        col = item.column()
+        key = event.key()
+
+        if key == Qt.Key_Return or key == Qt.Key_Enter:
+            if not item.flags() & Qt.ItemIsEditable:
+                self.on_cell_doubleclick(row, col)
+            else:
+                table_widget.editItem(item)
+        elif key == Qt.Key_Left and col > 0:
+            table_widget.setCurrentCell(row, col - 1)
+        elif key == Qt.Key_Right and col < table_widget.columnCount() - 1:
+            table_widget.setCurrentCell(row, col + 1)
+        elif key == Qt.Key_Up and row > 0:
+            table_widget.setCurrentCell(row - 1, col)
+        elif key == Qt.Key_Down and row < table_widget.rowCount() - 1:
+            table_widget.setCurrentCell(row + 1, col)
+
+    def on_cell_update(self, item):
         if not self.is_initialized:
             return
         row_idx = item.row()
@@ -171,13 +203,22 @@ class ROTKXIGUI(QMainWindow):
         # f"Cell ({row_idx}, {col_idx}) in {table_name} with column name {col_name} was modified with new value {cell_text}")
 
         def reverse(d): return {v: k for k, v in d.items()}
-        if col_name == 'specialty':
+        if col_name == 'id':
+            return
+        elif col_name == 'specialty':
             cell_data = reverse(specialty_options)[cell_text]
         elif col_name == 'alliance':
             return
+        elif col_name == "force":
+            if cell_text == "None":
+                cell_data = 0xFF
+            else:
+                officer_id = self.officer_names().index(cell_text)
+                cell_data = self.get_values_by_enum(
+                    Force.RULER).index(officer_id)
         elif col_name in officer_columns:
             if cell_text == "None":
-                cell_data = 65535
+                cell_data = 0xFFFF
             else:
                 cell_data = self.officer_names().index(cell_text)
         elif col_name in col_map:
@@ -189,7 +230,7 @@ class ROTKXIGUI(QMainWindow):
 
         self.table_datas[table_name]['data'][row_idx][col_idx] = cell_data
 
-    def handle_doubleclick(self, row_idx, col_idx):
+    def on_cell_doubleclick(self, row_idx, col_idx):
         current_tab = self.tab_widget.currentIndex()
         current_table = self.table_widgets[current_tab]
         cell_item = current_table.item(row_idx, col_idx)
@@ -200,8 +241,15 @@ class ROTKXIGUI(QMainWindow):
             self.choose_option(cell_item, options)
         elif col_name == 'alliance':
             self.alliance(row_idx)
+        elif col_name == "force":
+            ruler_ids = self.get_values_by_enum(Force.RULER)
+            officer_names = self.officer_names()
+            options = sorted([officer for officer in officer_names if officer_names.index(
+                officer) in ruler_ids]) + ["None"]
+            self.choose_option(cell_item, options)
         elif col_name in officer_columns:
-            self.choose_officer(cell_item)
+            options = sorted(self.officer_names()) + ["None"]
+            self.choose_option(cell_item, options)
         elif col_name in col_map:
             options = col_map[col_name].values()
             self.choose_option(cell_item, options)
@@ -214,23 +262,8 @@ class ROTKXIGUI(QMainWindow):
         combo_box.setEditText(cell_item.text())
         combo_box.setInsertPolicy(QComboBox.NoInsert)
 
-        current_text = cell_item.text()
-        current_index = list(options).index(current_text)
         item, ok = QInputDialog.getItem(
-            self, "Choose option", "Select an option:", options, current=current_index)
-
-        if ok and item and item in options:
-            cell_item.setText(item)
-
-    def choose_officer(self, cell_item):
-        combo_box = QComboBox()
-        options = self.officer_names() + ["None"]
-        combo_box.addItems(options)
-        combo_box.setEditText(cell_item.text())
-        combo_box.setInsertPolicy(QComboBox.NoInsert)
-
-        item, ok = QInputDialog.getItem(
-            self, "Choose option", "Select an option:", options, current=0)
+            self, "Choose option", "Select an option:", options)
 
         if ok and item and item in options:
             cell_item.setText(item)
@@ -242,7 +275,7 @@ class ROTKXIGUI(QMainWindow):
         return [alliance_value for i in range(NUM_FORCES) if alliance_value & (1 << i)]
 
     def get_values_by_enum(self, enum_value):
-        return [x[enum_value] for x in self.table_datas[enum_value.__class__.__name__.lower()]]
+        return [x[enum_value] for x in self.table_datas[enum_value.__class__.__name__.lower()]['data']]
 
     def alliance(self, row_idx):
         dialog = QDialog()
@@ -263,7 +296,7 @@ class ROTKXIGUI(QMainWindow):
         force_rulers = self.get_values_by_enum(Force.RULER)
         allegiance_values = self.get_values_by_enum(Officer.ALLEGIANCE)
         # ruler_allegiances = [allegiance_values[x]
-        #                      if x != 65535 else 255 for x in force_rulers]
+        #                      if x != 0xFFFF else 0xFF for x in force_rulers]
 
         checkboxes: list[QCheckBox] = []
 

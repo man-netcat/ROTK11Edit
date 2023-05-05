@@ -189,7 +189,7 @@ end
 
 begin
 city 0x2814F 81 42
-    owner int 1
+    force int 1
     maxtroops int 4
     troops int 4
     gold int 4
@@ -216,7 +216,7 @@ end
 
 begin
 gates_ports 0x28E99 64 45
-    owner int 1
+    force int 1
     troops int 4
     gold int 4
     food int 4

@@ -1519,6 +1519,9 @@ officer_columns = [
     'dislikedofficer3',
     'dislikedofficer4',
     'dislikedofficer5',
+    'clan',
+    'emperor',
+    'owner'
 ]
 
 ps2_scenarios = {
