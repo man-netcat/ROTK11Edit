@@ -152,7 +152,10 @@ class ROTKXIGUI(QMainWindow):
         cell_item.setData(Qt.DisplayRole, cell_text)
         return cell_item
 
-    def init_table_widget(self, table_name, col_names, table_data):
+    def init_table_widget(self, table_name):
+        col_names = self.table_datas[table_name]['col_names']
+        table_data = self.table_datas[table_name]['data']
+
         table_widget = QTableWidget(self)
         table_widget.setObjectName(table_name)
         table_widget.setColumnCount(len(col_names))
@@ -462,10 +465,7 @@ class ROTKXIGUI(QMainWindow):
             for table_name in table_names:
                 if table_name == 'sqlite_sequence':
                     continue
-                self.init_table_widget(
-                    table_name,
-                    self.table_datas[table_name]['col_names'],
-                    self.table_datas[table_name]['data'])
+                self.init_table_widget(table_name)
 
         self.save_file_action.setEnabled(True)
         self.save_as_file_action.setEnabled(True)
