@@ -19,6 +19,8 @@ class Unimplemented(Exception):
 
 
 class SaveThread(QThread):
+    """Class representing the save and write-back functionality. Will show a neat progress bar.
+    """
     save_progress = pyqtSignal(int)
 
     def __init__(self, db_path, scen_path, table_datas, file_offset, parentobj=None):
@@ -86,7 +88,7 @@ class ROTKXIGUI(QMainWindow):
         self.help_menu.addAction(self.about_action)
 
     def show_about_dialog(self):
-        about_text = "Made by Rick/Catto\n\nhttps://github.com/rickt1998/rtk11edit"
+        about_text = "Available at https://github.com/rickt1998/rtk11edit"
         QMessageBox.about(self, "About", about_text)
 
     def init_functions(self):
@@ -118,12 +120,12 @@ class ROTKXIGUI(QMainWindow):
         self.table_datas = {}
         self.sorting_order = Qt.AscendingOrder
 
-        self.new_scen_path = None
+        self.new_scen_path: str = None
         self.is_initialized = False
 
         self.open_file()
 
-    def init_cell(self, cell_data, table_name, col_name):
+    def init_cell(self, cell_data: int | str, table_name: str, col_name: str) -> QTableWidgetItem:
         cell_item = QTableWidgetItem()
         cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
 
@@ -136,7 +138,7 @@ class ROTKXIGUI(QMainWindow):
         elif col_name in ["alliance", "research"]:
             cell_text = "Edit"
         elif col_name == "force":
-            cell_text = self.get_force_ruler_name_by_id(cell_data)
+            cell_text = self.get_force_ruler_name_by_force_id(cell_data)
         elif col_name in officer_columns:
             cell_text = self.get_officer_name_by_id(cell_data)
         elif col_name in col_map:
@@ -154,7 +156,7 @@ class ROTKXIGUI(QMainWindow):
 
         return cell_item
 
-    def init_table_widget(self, table_name):
+    def init_table_widget(self, table_name: str):
         col_names = self.table_datas[table_name]['col_names']
         table_data = self.table_datas[table_name]['data']
 
@@ -179,53 +181,83 @@ class ROTKXIGUI(QMainWindow):
                 table_widget.setItem(row_idx, col_idx, cell_item)
 
         for col_idx, col_name in enumerate(col_names):
-            if any([substr in col_name for substr in ["unknown", "relationship"]]):
+            if any([substr in col_name for substr in ["unknown", "relationship", "ingame"]]):
                 table_widget.setColumnHidden(col_idx, True)
 
         self.tab_widget.addTab(table_widget, table_name)
         self.table_widgets.append(table_widget)
 
-    def officer_names(self):
+    def set_table_data(self, table_name: str, row_idx: int, col_idx: int, cell_data: str | int):
+        self.table_datas[table_name]['data'][row_idx][col_idx] = cell_data
+
+    def get_table_data(self, table_name: str, row_idx: int, col_idx: int) -> str | int:
+        return self.table_datas[table_name]['data'][row_idx][col_idx]
+
+    def get_column_name(self, table_name: str, col_idx: int) -> str:
+        return self.table_datas[table_name]['col_names'][col_idx]
+
+    def officer_names(self) -> list[str]:
+        """Returns an up-to-date list of all officer names (family + given names).
+        """
         return [
             self.get_officer_name_by_id(officer_id)
             for officer_id in range(NUM_OFFICERS)]
 
-    def get_specialty_text_from_value(self, value):
+    def get_specialty_text_from_value(self, value: int) -> str:
+        """Parses the specialty text given a city specialty value.
+        """
         specialty_idx = specialty_hex.index(value)
         return specialty_options[specialty_idx]
 
-    def get_specialty_value_from_text(self, text):
+    def get_specialty_value_from_text(self, text: str) -> int:
+        """Returns the specialty value given its description.
+        """
         return reverse(specialty_options)[text]
 
-    def get_force_ruler_name_by_id(self, force_id):
+    def get_force_ruler_name_by_force_id(self, force_id: int) -> str:
+        """Return the name of the force ruler given a force id.
+        """
         if force_id == 0xFF:
             return "None"
         ruler_id = self.get_values_by_enum(Force.RULER)[force_id]
         return self.get_officer_name_by_id(ruler_id)
 
-    def get_force_ruler_id_by_name(self, ruler_name):
+    def get_force_id_by_force_ruler_name(self, ruler_name: str) -> int:
+        """Returns the force id given its ruler's name.
+        """
         if ruler_name == "None":
             return 0xFF
         officer_id = self.officer_names().index(ruler_name)
         return self.get_values_by_enum(Force.RULER).index(officer_id)
 
-    def get_officer_name_by_id(self, officer_id):
+    def get_officer_name_by_id(self, officer_id: int) -> str:
+        """Returns the name of an officer given its id.
+        """
         if officer_id == 0xFFFF:
             return "None"
         elif officer_id >= 850:  # TODO Shared parent
             return "Parent"
-        officer_data = self.table_datas['officer']['data'][officer_id]
-        return (officer_data[Officer.FAMILYNAME] + ' ' + officer_data[Officer.GIVENNAME]).replace('\x00', '').strip()
+        officer_familyname = self.get_table_data(
+            'officer', officer_id, Officer.FAMILYNAME)
+        officer_givenname = self.get_table_data(
+            'officer', officer_id, Officer.GIVENNAME)
+        return (officer_familyname + ' ' + officer_givenname).replace('\x00', '').strip()
 
-    def get_officer_id_by_name(self, officer_name):
+    def get_officer_id_by_name(self, officer_name: str) -> int:
+        """Returns the id of an officer given its name.
+        """
         if officer_name == "None":
             return 0xFFFF
         return self.officer_names().index(officer_name)
 
-    def get_reverse_column_mapping(self, col_name, text):
+    def get_reverse_column_mapping(self, col_name: str, text: str):
+        """Returns the inverse mapping for a given column.
+        """
         return reverse(col_map[col_name])[text]
 
-    def on_key_pressed(self, event):
+    def on_key_pressed(self, event: QKeyEvent):
+        """Performs the appropriate action on a key-press event.
+        """
         table_widget = self.tab_widget.currentWidget()
         item = table_widget.currentItem()
         if not item:
@@ -249,14 +281,16 @@ class ROTKXIGUI(QMainWindow):
         elif key == Qt.Key_Down and row < table_widget.rowCount() - 1:
             table_widget.setCurrentCell(row + 1, col)
 
-    def on_cell_update(self, cell_item):
+    def on_cell_update(self, cell_item: QTableWidgetItem):
+        """Updates the data in the internal table when a cell in the table widgets is modified.
+        """
         if not self.is_initialized:
             return
         row_idx = cell_item.row()
         col_idx = cell_item.column()
         table_widget = cell_item.tableWidget()
         table_name = table_widget.objectName()
-        col_name = self.table_datas[table_name]['col_names'][col_idx]
+        col_name = self.get_column_name(table_name, col_idx)
         cell_text = cell_item.text()
 
         if col_name in ['id', 'alliance', 'research']:
@@ -264,7 +298,7 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == 'specialty':
             cell_data = self.get_specialty_value_from_text(cell_text)
         elif col_name == "force":
-            cell_data = self.get_force_ruler_id_by_name(cell_text)
+            cell_data = self.get_force_id_by_force_ruler_name(cell_text)
         elif col_name in officer_columns:
             cell_data = self.get_officer_id_by_name(cell_text)
         elif col_name in col_map:
@@ -274,49 +308,57 @@ class ROTKXIGUI(QMainWindow):
         else:
             cell_data = cell_text
 
-        self.table_datas[table_name]['data'][row_idx][col_idx] = cell_data
+        self.set_table_data(table_name, row_idx, col_idx, cell_data)
 
-    def get_force_ruler_options(self):
+        # Also set in-game year and month if either is changed
+        if col_name == 'year':
+            self.set_table_data('scenario', 0, Scenario.INGAMEYEAR, cell_data)
+        elif col_name == 'month':
+            self.set_table_data('scenario', 0, Scenario.INGAMEMONTH, cell_data)
+
+    def get_force_ruler_options(self) -> list[str]:
+        """Returns the list of all force rulers for city and gates/ports ownership.
+        """
         ruler_ids = self.get_values_by_enum(Force.RULER)
         officer_names = self.officer_names()
         return sorted([officer for officer in officer_names if officer_names.index(officer) in ruler_ids]) + ["None"]
 
-    def get_officer_options(self):
-        sorted(self.officer_names()) + ["None"]
+    def get_officer_options(self) -> list[str]:
+        """Returns the sorted list of options for officers, ending on 'None'.
+        """
+        return sorted(self.officer_names()) + ["None"]
 
-    def get_column_mapping_options(self, col_name):
-        return col_map[col_name].values()
-
-    def get_specialty_options(self):
-        return specialty_options.values()
-
-    def on_cell_doubleclick(self, row_idx, col_idx):
+    def on_cell_doubleclick(self, row_idx: int, col_idx: int):
+        """Triggers upon doubleclicking a cell and calls the appropriate function depending on the column.
+        """
         current_tab = self.tab_widget.currentIndex()
         current_table = self.table_widgets[current_tab]
         cell_item = current_table.item(row_idx, col_idx)
         table_name = current_table.objectName()
-        col_name = self.table_datas[table_name]['col_names'][col_idx]
+        col_name = self.get_column_name(table_name, col_idx)
 
         if col_name == 'alliance':
-            self.set_alliance_by_row_id(row_idx)
+            self.set_alliance(row_idx)
             return
         elif col_name == 'research':
-            self.set_research_by_row_id(row_idx)
+            self.set_research(row_idx)
             return
         elif col_name == 'specialty':
-            options = self.get_specialty_options()
+            options = specialty_options.values()
         elif col_name == "force":
             options = self.get_force_ruler_options()
         elif col_name in officer_columns:
             options = self.get_officer_options()
         elif col_name in col_map:
-            options = self.get_column_mapping_options(col_name)
+            options = col_map[col_name].values()
         else:
             return
 
         self.choose_option(cell_item, options)
 
-    def choose_option(self, cell_item, options):
+    def choose_option(self, cell_item: QTableWidgetItem, options: list[str]):
+        """Opens a dialogue box with a drop-down menu given a list of options.
+        """
         combo_box = QComboBox()
         combo_box.addItems(options)
         combo_box.setEditText(cell_item.text())
@@ -328,55 +370,57 @@ class ROTKXIGUI(QMainWindow):
         if ok and item and item in options:
             cell_item.setText(item)
 
-    def create_alliance_value(self, force_numbers):
+    def create_alliance_value(self, force_numbers: list[int]):
+        """Creates an alliance value for a given list of force numbers.
+        """
         return reduce(lambda x, y: x | (1 << y), force_numbers, 0)
 
-    def parse_alliance_value(self, alliance_value):
+    def parse_alliance_value(self, alliance_value: int):
+        """Parses an alliance value and returns the list of participating forces.
+        """
         return [alliance_value for i in range(NUM_FORCES) if alliance_value & (1 << i)]
 
     def get_values_by_enum(self, enum_value):
-        return [x[enum_value] for x in self.table_datas[enum_value.__class__.__name__.lower()]['data']]
+        """Returns all values in the table for a column given an enum value representing that column.
+        """
+        return [row[enum_value] for row in self.table_datas[enum_value.__class__.__name__.lower()]['data']]
 
-    def parse_research_value(self, research_value):
-        return [(research_value >> (28 - i*4)) & 0x0F for i in range(8)]
+    def parse_research_value(self, research_value: int):
+        """Parses the research value and returns the individual levels for each research tree.
+        """
+        return [(research_value >> (28-i*4)) & 0x0F for i in range(8)]
 
-    def create_research_value(self, research_levels):
-        return sum([level << (28 - i*4) for i, level in enumerate(research_levels)])
+    def create_research_value(self, research_levels: list[int]):
+        """Given a list of the individual research levels, returns the summed research value
+        """
+        return sum(research_level_values[level] << (28-i*4) for i, level in enumerate(research_levels))
 
-    def set_research_by_row_id(self, row_idx):
+    def set_research(self, row_idx: int):
+        """Opens a dialogue box with sliders for each individual research level.
+        """
         dialog = QDialog()
         dialog.setWindowTitle("Research Levels")
 
-        research_value = self.table_datas['force']['data'][row_idx][Force.RESEARCH]
-        print(research_value)
-
-        labels = [
-            "Pikes", "Spears", "Horses", "Bows",
-            "Invention", "Command", "Fire", "Defense"]
-
-        levels = [0x0, 0x1, 0x3, 0x7, 0xf]
-
+        research_value = self.get_table_data('force', row_idx, Force.RESEARCH)
         research_levels = self.parse_research_value(research_value)
-        print(research_levels)
 
-        sliders_layout = QVBoxLayout()
+        sliders_layout = QGridLayout()
         sliders = []
-        for i, label in enumerate(labels):
-            slider_layout = QHBoxLayout()
+        for i, label in enumerate(research_labels):
+            research_level = research_level_values.index(research_levels[i])
             slider_label = QLabel(label)
             slider = QSlider(Qt.Horizontal)
             slider.setMinimum(0)
             slider.setMaximum(4)
-            slider.setValue(levels.index(research_levels[i]))
+            slider.setValue(research_level)
             slider.setTickPosition(QSlider.TicksBelow)
             slider.setTickInterval(1)
             slider.setSingleStep(1)
-            slider_value_label = QLabel(str(levels.index(research_levels[i])))
+            slider_value_label = QLabel(str(research_level))
             slider_value_label.setAlignment(Qt.AlignRight)
-            slider_layout.addWidget(slider_label)
-            slider_layout.addWidget(slider)
-            slider_layout.addWidget(slider_value_label)
-            sliders_layout.addLayout(slider_layout)
+            sliders_layout.addWidget(slider_label, i, 0)
+            sliders_layout.addWidget(slider, i, 1)
+            sliders_layout.addWidget(slider_value_label, i, 2)
             sliders.append(slider)
 
             def on_slider_value_changed(value, slider_value_label=slider_value_label):
@@ -400,13 +444,14 @@ class ROTKXIGUI(QMainWindow):
 
         if dialog.exec_() == QDialog.Accepted:
             new_research_levels = [slider.value() for slider in sliders]
-            print(new_research_levels)
             new_research_value = self.create_research_value(
                 new_research_levels)
-            print(new_research_value)
-            self.table_datas['force']['data'][row_idx][Force.RESEARCH] = new_research_value
+            self.set_table_data(
+                'force', row_idx, Force.RESEARCH, new_research_value)
 
-    def set_alliance_by_row_id(self, row_idx):
+    def set_alliance(self, row_idx: int):
+        """Opens a dialogue box with checkboxes for all rulers to create alliances between them.
+        """
         dialog = QDialog()
         dialog.setWindowTitle('Alliances')
 
@@ -418,8 +463,7 @@ class ROTKXIGUI(QMainWindow):
         checkboxes_widget = QWidget()
         checkboxes_layout = QVBoxLayout(checkboxes_widget)
 
-        alliance_value = self.table_datas['force']['data'][row_idx][Force.ALLIANCE]
-
+        alliance_value = self.get_table_data('force', row_idx, Force.ALLIANCE)
         force_numbers = self.parse_alliance_value(alliance_value)
         alliance_values = self.get_values_by_enum(Force.ALLIANCE)
         force_rulers = self.get_values_by_enum(Force.RULER)
@@ -459,14 +503,18 @@ class ROTKXIGUI(QMainWindow):
 
         for i, alliance_value in enumerate(alliance_values):
             if i in checked:
-                self.table_datas['force'][i][Force.ALLIANCE] = new_alliance_value
+                self.set_table_data(
+                    'force', i, Force.ALLIANCE, new_alliance_value)
             else:
-                self.table_datas['force'][i][Force.ALLIANCE] &= ~new_alliance_value
-            print(self.parse_alliance_value(
-                self.table_datas['force'][i][Force.ALLIANCE]))
+                old_alliance_value = self.get_table_data(
+                    'force', i, Force.ALLIANCE)
+                self.set_table_data(
+                    'force', i, Force.ALLIANCE, old_alliance_value & ~new_alliance_value)
         print()
 
-    def sort_table(self, col_idx):
+    def sort_table(self, col_idx: int):
+        """Sorts the table in ascending/descending order on a given column.
+        """
         table_widget = self.table_widgets[-1]
         self.sorting_order = Qt.DescendingOrder if self.sorting_order == Qt.AscendingOrder else Qt.AscendingOrder
         table_widget.sortItems(col_idx, self.sorting_order)
@@ -475,6 +523,8 @@ class ROTKXIGUI(QMainWindow):
         self.sorting_order = table_widget.horizontalHeader().sortIndicatorOrder()
 
     def filter_table(self):
+        """Callback function for filtering the table on a given string input.
+        """
         search_text = self.search_box.text().lower()
 
         for table in self.table_widgets:
@@ -623,5 +673,5 @@ def main():
 
 
 if __name__ == '__main__':
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)  # TODO: Deleteme
     main()

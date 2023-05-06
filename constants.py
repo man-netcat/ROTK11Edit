@@ -165,6 +165,24 @@ class Officer(Enum):
         return self.value
 
 
+class Scenario(Enum):
+    ID = 0
+    NUMBER = 1
+    YEAR = 2
+    MONTH = 3
+    UNKNOWN = 4
+    NAME = 5
+    DESC = 6
+    INGAMEYEAR = 7
+    INGAMEMONTH = 8
+    UNKNOWN2 = 9
+    EMPEROR = 10
+    GAMEMODE = 11
+
+    def __index__(self):
+        return self.value
+
+
 # 0xFF = index 255 maps to white
 colour_map = {
     0x00: 0x2828E8, 0x01: 0x387800, 0x02: 0xD00028, 0x03: 0x8C662A, 0x04: 0x200070, 0x05: 0x5A5A5A, 0x06: 0x20DEE0, 0x07: 0xDAD23A, 0x08: 0xF69CB2, 0x09: 0xA0D488,
@@ -792,6 +810,12 @@ officer_columns = [
     'emperor',
     'owner'
 ]
+
+research_labels = [
+    "Pikes", "Spears", "Horses", "Bows",
+    "Invention", "Command", "Fire", "Defense"]
+
+research_level_values = [0x0, 0x1, 0x3, 0x7, 0xf]
 
 ps2_scenarios = {
     name: offset for offset, name in zip(

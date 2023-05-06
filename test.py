@@ -9,7 +9,7 @@ def main():
     newscen = 'scenario/SCENTST.S11'
     db = '/tmp/rtk11.db'
     lyt = 'rtk11.lyt'
-    for i in range(8):
+    for i in range(10):
         oldscen = f'scenario/SCEN00{i}.S11'
 
         with BinaryParser(lyt, encoding='shift-jis') as bp:
