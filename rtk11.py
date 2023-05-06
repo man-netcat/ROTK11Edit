@@ -126,6 +126,8 @@ class ROTKXIGUI(QMainWindow):
         self.open_file()
 
     def init_cell(self, cell_data: int | str, table_name: str, col_name: str) -> QTableWidgetItem:
+        """Initialises the contents of a cell item based on its column.
+        """
         cell_item = QTableWidgetItem()
         cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
 
@@ -157,6 +159,8 @@ class ROTKXIGUI(QMainWindow):
         return cell_item
 
     def init_table_widget(self, table_name: str):
+        """Initialises a table widget with the data read from the file.
+        """
         col_names = self.table_datas[table_name]['col_names']
         table_data = self.table_datas[table_name]['data']
 
@@ -188,20 +192,24 @@ class ROTKXIGUI(QMainWindow):
         self.table_widgets.append(table_widget)
 
     def set_table_data(self, table_name: str, row_idx: int, col_idx: int, cell_data: str | int):
+        """Sets the data of the internal table.
+        """
         self.table_datas[table_name]['data'][row_idx][col_idx] = cell_data
 
     def get_table_data(self, table_name: str, row_idx: int, col_idx: int) -> str | int:
+        """Retrieves data from the internal table.
+        """
         return self.table_datas[table_name]['data'][row_idx][col_idx]
 
     def get_column_name(self, table_name: str, col_idx: int) -> str:
+        """Returns the name of a column in a table given its index.
+        """
         return self.table_datas[table_name]['col_names'][col_idx]
 
     def officer_names(self) -> list[str]:
         """Returns an up-to-date list of all officer names (family + given names).
         """
-        return [
-            self.get_officer_name_by_id(officer_id)
-            for officer_id in range(NUM_OFFICERS)]
+        return [self.get_officer_name_by_id(officer_id) for officer_id in range(NUM_OFFICERS)]
 
     def get_specialty_text_from_value(self, value: int) -> str:
         """Parses the specialty text given a city specialty value.
