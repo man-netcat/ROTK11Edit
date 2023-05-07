@@ -780,6 +780,11 @@ specialty_hex = [int(n, 16) for n in [
     '000000000001'
 ]]
 
+gamemode_map = {
+    0x00: "Normal",
+    0x01: "Rise of Heroes"
+}
+
 col_map = {
     'rank': officer_ranks_map,
     'status': officer_status_map,
@@ -807,7 +812,8 @@ col_map = {
     'strategictendency': strategy_map,
     'localaffiliation': affiliation_map,
     'death': death_map,
-    'sex': sex_map
+    'sex': sex_map,
+    'gamemode': gamemode_map
 }
 
 officer_columns = [

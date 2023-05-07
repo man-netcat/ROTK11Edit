@@ -6,6 +6,7 @@ import tempfile
 from functools import reduce
 from sqlite3 import connect
 
+import qdarkstyle
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -79,6 +80,14 @@ class ROTKXIGUI(QMainWindow):
         self.exit_action.triggered.connect(self.close)
         self.file_menu.addAction(self.exit_action)
 
+        # Add "View" menu
+        self.view_menu = self.menubar.addMenu("&View")
+
+        # Add "Theme" action
+        self.theme_action = QAction("&Theme", self)
+        self.theme_action.triggered.connect(self.select_theme)
+        self.view_menu.addAction(self.theme_action)
+
         # Add "Help" menu
         self.help_menu = self.menubar.addMenu("&Help")
 
@@ -86,6 +95,43 @@ class ROTKXIGUI(QMainWindow):
         self.about_action = QAction("&About", self)
         self.about_action.triggered.connect(self.show_about_dialog)
         self.help_menu.addAction(self.about_action)
+
+    def select_theme(self):
+        def set_light_theme():
+            self.setStyleSheet("")
+            self.update()
+            return
+
+        def set_dark_theme():
+            self.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+            self.update()
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Choose Theme")
+
+        main_layout = QVBoxLayout()
+        button_layout = QHBoxLayout()
+
+        light_button = QPushButton("Light Theme")
+        light_button.clicked.connect(set_light_theme)
+        button_layout.addWidget(light_button)
+
+        dark_button = QPushButton("Dark Theme")
+        dark_button.clicked.connect(set_dark_theme)
+        button_layout.addWidget(dark_button)
+
+        ok_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(lambda: dialog.accept())
+        ok_layout.addWidget(ok_button)
+
+        main_layout.addLayout(button_layout)
+        main_layout.addLayout(ok_layout)
+
+        dialog.setLayout(main_layout)
+
+        dialog.exec_()
 
     def show_about_dialog(self):
         about_text = "Available at https://github.com/rickt1998/rtk11edit"
