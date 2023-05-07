@@ -470,9 +470,6 @@ class ROTKXIGUI(QMainWindow):
                 for target in conquer_province_map.values():
                     target_combo.addItem(target)
                 target_combo.setEnabled(True)
-            elif aspiration_text == "Passive":
-                target_combo.clear()
-                target_combo.setDisabled(True)
             else:
                 target_combo.clear()
                 target_combo.setDisabled(True)

@@ -846,6 +846,8 @@ aspiration_map = {
     0x01: "Conquer Region",
     0x02: "Conquer Province",
     0x03: "Passive",
+    0x04: "Unknown_1",
+    0x05: "Unknown_2",
     0xFF: "Unused"
 }
 
