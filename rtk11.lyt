@@ -218,7 +218,7 @@ city 0x2814F 81 42
 end
 
 begin
-gates_ports 0x28E99 64 45
+gate_port 0x28E99 64 45
     force int 1
     troops int 4
     gold int 4
@@ -238,7 +238,7 @@ gates_ports 0x28E99 64 45
 end
 
 begin
-countries 0x299D9 103 84
+country 0x299D9 103 84
     name str 17
     desc str 80
     unknown1 int 1

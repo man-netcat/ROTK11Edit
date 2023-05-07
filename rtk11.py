@@ -183,7 +183,7 @@ class ROTKXIGUI(QMainWindow):
             cell_item.setBackground(QBrush(color))
         elif col_name == "specialty":
             cell_text = self.get_specialty_text_from_value(cell_data)
-        elif col_name in ["alliance", "research", "goal"]:
+        elif col_name in ["alliance", "research", "goal", "target"]:
             cell_text = "Edit"
         elif col_name in ["force", "allegiance"]:
             cell_text = self.get_force_ruler_name_by_force_id(cell_data)
@@ -191,6 +191,8 @@ class ROTKXIGUI(QMainWindow):
             cell_text = growth_ability_map[cell_data]
         elif col_name in officer_columns:
             cell_text = self.get_officer_name_by_id(cell_data)
+        elif col_name == 'country':
+            cell_text = self.get_country_name_by_id(cell_data)
         elif col_name in col_map:
             cell_text = col_map[col_name][cell_data]
         elif self.datatypes[table_name][col_name] == 'int':
@@ -269,6 +271,11 @@ class ROTKXIGUI(QMainWindow):
         """
         return [self.get_officer_name_by_id(officer_id) for officer_id in range(NUM_OFFICERS)]
 
+    def country_names(self) -> list[str]:
+        """Returns an up-to-date list of all country names
+        """
+        return [self.get_country_name_by_id(country_id) for country_id in range(NUM_COUNTRIES)]
+
     def get_specialty_text_from_value(self, value: int) -> str:
         """Parses the specialty text given a city specialty value.
         """
@@ -285,7 +292,7 @@ class ROTKXIGUI(QMainWindow):
         """
         if force_id == 0xFF:
             return "None"
-        elif force_id >= 42:
+        elif force_id >= NUM_FORCES:
             return tribes[force_id]
         ruler_id = self.get_values_by_enum(Force.RULER)[force_id]
         return self.get_officer_name_by_id(ruler_id)
@@ -303,7 +310,7 @@ class ROTKXIGUI(QMainWindow):
         """
         if officer_id == 0xFFFF:
             return "None"
-        elif officer_id >= 850:  # TODO Shared parent
+        elif officer_id >= NUM_OFFICERS:  # TODO Shared parent
             return "Parent"
         officer_familyname = self.get_table_data(
             'officer', officer_id, Officer.FAMILYNAME)
@@ -317,6 +324,22 @@ class ROTKXIGUI(QMainWindow):
         if officer_name == "None":
             return 0xFFFF
         return self.officer_names().index(officer_name)
+
+    def get_country_name_by_id(self, country_id: int) -> str:
+        """Returns the name of a country given its id.
+        """
+        if country_id == 0xFF:
+            return "None"
+        elif country_id >= NUM_COUNTRIES:  # TODO Shared parent
+            return "Parent"
+        return self.get_table_data('country', country_id, Country.NAME).replace('\x00', '').strip()
+
+    def get_country_id_by_name(self, country_name: int) -> int:
+        """Returns the id of a country given its name
+        """
+        if country_name == "None":
+            return 0xFF
+        return self.country_names().index(country_name)
 
     def get_reverse_column_mapping(self, col_name: str, text: str):
         """Returns the inverse mapping for a given column.
@@ -361,16 +384,18 @@ class ROTKXIGUI(QMainWindow):
         col_name = self.get_column_name(table_name, col_idx)
         cell_text = cell_item.text()
 
-        if col_name in ['id', 'alliance', 'research', 'goal']:
+        if col_name in ['id', 'alliance', 'research', 'goal', 'target']:
             return
         elif col_name == 'specialty':
             cell_data = self.get_specialty_value_from_text(cell_text)
-        elif col_name == "force":
+        elif col_name == ["force", 'allegiance']:
             cell_data = self.get_force_id_by_force_ruler_name(cell_text)
         elif 'growth' in col_name:
             cell_data = reverse(growth_ability_map)[cell_text]
         elif col_name in officer_columns:
             cell_data = self.get_officer_id_by_name(cell_text)
+        elif col_name == 'country':
+            cell_data = self.get_country_id_by_name(cell_text)
         elif col_name in col_map:
             cell_data = self.get_reverse_column_mapping(cell_text)
         elif self.datatypes[table_name][col_name] == 'int':
@@ -398,6 +423,11 @@ class ROTKXIGUI(QMainWindow):
         """
         return sorted(self.officer_names()) + ["None"]
 
+    def get_country_options(self) -> list[str]:
+        """Returns the sorted list of options for countries, ending on 'None'.
+        """
+        return sorted(self.country_names()) + ["None"]
+
     def on_cell_doubleclick(self, row_idx: int, col_idx: int):
         """Triggers upon doubleclicking a cell and calls the appropriate function depending on the column.
         """
@@ -414,7 +444,10 @@ class ROTKXIGUI(QMainWindow):
             self.set_research(row_idx)
             return
         elif col_name == 'goal':
-            self.set_goal(row_idx)
+            self.set_force_goal(row_idx)
+            return
+        elif col_name == 'target':
+            self.set_district_goal(row_idx)
             return
         elif 'growth' in col_name:
             options = growth_ability_map.values()
@@ -424,6 +457,8 @@ class ROTKXIGUI(QMainWindow):
             options = self.get_force_ruler_options()
         elif col_name in officer_columns:
             options = self.get_officer_options()
+        elif col_name == 'country':
+            options = self.get_country_options()
         elif col_name in col_map:
             options = col_map[col_name].values()
         else:
@@ -478,7 +513,7 @@ class ROTKXIGUI(QMainWindow):
     def create_goal_value(self, aspiration: int, target: int):
         return ((target & 0xFF) << 8) | (aspiration & 0xFF)
 
-    def set_goal(self, row_idx: int):
+    def set_force_goal(self, row_idx: int):
         dialog = QDialog()
         dialog.setWindowTitle("Set Aspiration and Target")
 
@@ -511,21 +546,15 @@ class ROTKXIGUI(QMainWindow):
 
         def set_aspiration():
             aspiration_text = aspiration_combo.currentText()
-            if aspiration_text == "Conquer China":
-                target_combo.clear()
-                target_combo.setDisabled(True)
-            elif aspiration_text == "Conquer Region":
-                target_combo.clear()
+            target_combo.clear()
+            target_combo.setEnabled(True)
+            if aspiration_text == "Conquer Region":
                 for target in conquer_region_map.values():
                     target_combo.addItem(target)
-                target_combo.setEnabled(True)
             elif aspiration_text == "Conquer Province":
-                target_combo.clear()
                 for target in conquer_province_map.values():
                     target_combo.addItem(target)
-                target_combo.setEnabled(True)
             else:
-                target_combo.clear()
                 target_combo.setDisabled(True)
 
         goal_value = self.get_table_data('force', row_idx, Force.GOAL)
@@ -555,6 +584,98 @@ class ROTKXIGUI(QMainWindow):
 
         new_goal_value = self.create_goal_value(aspiration_value, target_value)
         self.set_table_data('force', row_idx, Force.GOAL, new_goal_value)
+
+    def set_district_goal(self, row_idx: int):
+        dialog = QDialog()
+        dialog.setWindowTitle("Set District Behaviour and Target")
+
+        behaviour_combo = QComboBox()
+        target_combo = QComboBox()
+
+        for behaviour_type in district_behaviour_map.values():
+            behaviour_combo.addItem(behaviour_type)
+
+        behaviour_label = QLabel("Behaviour:")
+        target_label = QLabel("Target:")
+
+        layout = QVBoxLayout()
+        behaviour_layout = QHBoxLayout()
+        target_layout = QHBoxLayout()
+
+        behaviour_layout.addWidget(behaviour_label)
+        behaviour_layout.addWidget(behaviour_combo)
+
+        target_layout.addWidget(target_label)
+        target_layout.addWidget(target_combo)
+
+        buttons_layout = self.make_confirmation_buttons(dialog)
+
+        layout.addLayout(behaviour_layout)
+        layout.addLayout(target_layout)
+        layout.addLayout(buttons_layout)
+
+        dialog.setLayout(layout)
+
+        def set_behaviour():
+            behaviour_text = behaviour_combo.currentText()
+            target_combo.clear()
+            target_combo.setEnabled(True)
+            if behaviour_text == "Destroy Force":
+                targets = self.get_force_ruler_options()
+                for target in targets:
+                    target_combo.addItem(target)
+            elif behaviour_text == "Conquer Region":
+                for target in conquer_region_map.values():
+                    target_combo.addItem(target)
+            elif behaviour_text == "Conquer Province":
+                for target in conquer_province_map.values():
+                    target_combo.addItem(target)
+            elif behaviour_text == "Conquer City/Gate/Port":
+                for target in city_map.values():
+                    target_combo.addItem(target)
+            else:
+                target_combo.setDisabled(True)
+
+        goal_value = self.get_table_data('district', row_idx, District.TARGET)
+        behaviour_value, target_value = self.parse_goal_value(goal_value)
+
+        print(goal_value, behaviour_value, target_value)
+
+        behaviour_combo.currentIndexChanged.connect(set_behaviour)
+        behaviour_combo.setCurrentText(district_behaviour_map[behaviour_value])
+
+        if behaviour_value == 0x00:
+            target_text = self.get_force_ruler_name_by_force_id(target_value)
+            target_combo.setCurrentText(target_text)
+        elif behaviour_value == 0x01:
+            target_combo.setCurrentText(conquer_region_map[target_value])
+        elif behaviour_value == 0x02:
+            target_combo.setCurrentText(conquer_province_map[target_value])
+        elif behaviour_value == 0x03:
+            target_combo.setCurrentText(city_map[target_value])
+
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        target_text = target_combo.currentText()
+        behaviour_text = behaviour_combo.currentText()
+        behaviour_value = reverse(district_behaviour_map)[behaviour_text]
+
+        if behaviour_value == 0x00:
+            target_value = self.get_force_ruler_options().index(target_text)
+        elif behaviour_value == 0x01:
+            target_value = reverse(conquer_region_map)[target_text]
+        elif behaviour_value == 0x02:
+            target_value = reverse(conquer_province_map)[target_text]
+        elif behaviour_value == 0x03:
+            target_value = reverse(city_map)[target_text]
+        else:
+            target_value = 0xFF
+
+        new_goal_value = self.create_goal_value(behaviour_value, target_value)
+        self.set_table_data('district', row_idx,
+                            District.TARGET, new_goal_value)
+        print(new_goal_value, behaviour_value, target_value)
 
     def set_research(self, row_idx: int):
         """Opens a dialogue box with sliders for each individual research level.

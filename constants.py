@@ -3,6 +3,7 @@ from enum import Enum
 
 NUM_OFFICERS = 850
 NUM_FORCES = 42
+NUM_COUNTRIES = 84
 
 
 def reverse(d): return {v: k for k, v in d.items()}
@@ -183,6 +184,30 @@ class Scenario(Enum):
         return self.value
 
 
+class District(Enum):
+    ID = 0
+    POSITION = 1
+    NUMBER = 2
+    RULER = 3
+    TARGET = 4
+    SPECIFICTARGET = 5
+
+    def __index__(self):
+        return self.value
+
+
+class Country(Enum):
+    ID = 0
+    NAME = 1
+    DESC = 2
+    UNKNOWN1 = 3
+    UNKNOWN2 = 4
+    USED = 5
+
+    def __index__(self):
+        return self.value
+
+
 # 0xFF = index 255 maps to white
 colour_map = {
     0x00: 0x2828E8, 0x01: 0x387800, 0x02: 0xD00028, 0x03: 0x8C662A, 0x04: 0x200070, 0x05: 0x5A5A5A, 0x06: 0x20DEE0, 0x07: 0xDAD23A, 0x08: 0xF69CB2, 0x09: 0xA0D488,
@@ -284,7 +309,6 @@ city_map = {
     0xFF: "Not Available",
     0xFFFF: "Not Available",
 }
-
 
 officer_status_map = {
     0x00: "Sovereign",
@@ -650,52 +674,6 @@ title_map = {
     0xFF: "Not Available",
 }
 
-country_map = {
-    0x00: "Wei",
-    0x01: "Wu",
-    0x02: "Shu",
-    0x03: "Ji",
-    0x04: "Cheng",
-    0x05: "Yellow Turbans",
-    0x06: "Han",
-    0x07: "Xia",
-    0x08: "Chang",
-    0x09: "Zhou",
-    0x0a: "Qin",
-    0x0b: "Xin",
-    0x0c: "Yan",
-    0x0d: "Zhao",
-    0x0e: "Qi",
-    0x0f: "Ji",
-    0x10: "Lu",
-    0x11: "Cao",
-    0x12: "Xue",
-    0x13: "Xu",
-    0x14: "Song",
-    0x15: "Chen",
-    0x16: "Su",
-    0x17: "Han",
-    0x18: "Gu",
-    0x19: "Zheng",
-    0x1a: "Xu",
-    0x1b: "Yu",
-    0x1c: "Liang",
-    0x1d: "Liang",
-    0x1e: "Cai",
-    0x1f: "Tang",
-    0x20: "Deng",
-    0x21: "Shen",
-    0x22: "Sui",
-    0x23: "Chu",
-    0x24: "Yue",
-    0x25: "Wuwan",
-    0x26: "Qiang",
-    0x27: "Shanyue",
-    0x28: "Nanman",
-    0x29: "Bandit",
-    0xFF: "Not Available",
-}
-
 ghost_officer_map = {
     0xD007: "Yuan Shao's father (Yuan Cheng I guess)",
     0xD107: "Yuan Yin's father",
@@ -806,14 +784,14 @@ col_map = {
     'modelstance': stance_map,
     'modelweapon': weapon_model_map,
     'modelhorse': horse_model_map,
-    'country': country_map,
     'type': item_type_map,
     'courtimportance': court_importance_map,
     'strategictendency': strategy_map,
     'localaffiliation': affiliation_map,
     'death': death_map,
     'sex': sex_map,
-    'gamemode': gamemode_map
+    'gamemode': gamemode_map,
+    'city': city_map
 }
 
 officer_columns = [
@@ -876,6 +854,16 @@ aspiration_map = {
     0x03: "Passive",
     0x04: "Unknown_1",
     0x05: "Unknown_2",
+    0xFF: "Unused"
+}
+
+district_behaviour_map = {
+    0x00: "Destroy Force",
+    0x01: "Conquer Region",
+    0x02: "Conquer Province",
+    0x03: "Conquer City/Gate/Port",
+    0x04: "Passive",
+    0x05: "Methodical",
     0xFF: "Unused"
 }
 
