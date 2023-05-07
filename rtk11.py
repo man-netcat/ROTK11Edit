@@ -98,12 +98,14 @@ class ROTKXIGUI(QMainWindow):
 
     def select_theme(self):
         def set_light_theme():
-            self.setStyleSheet("")
+            self.setStyleSheet(qdarkstyle.load_stylesheet(
+                qt_api='pyqt5', palette=qdarkstyle.LightPalette))
             self.update()
             return
 
         def set_dark_theme():
-            self.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+            self.setStyleSheet(qdarkstyle.load_stylesheet(
+                qt_api='pyqt5', palette=qdarkstyle.DarkPalette))
             self.update()
             return
 
@@ -944,6 +946,8 @@ class ROTKXIGUI(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    app.setStyleSheet(qdarkstyle.load_stylesheet(
+        qt_api='pyqt5', palette=qdarkstyle.DarkPalette))
     gui = ROTKXIGUI()
     gui.show()
     sys.exit(app.exec_())
