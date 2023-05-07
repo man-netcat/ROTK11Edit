@@ -191,6 +191,16 @@ class ROTKXIGUI(QMainWindow):
         self.tab_widget.addTab(table_widget, table_name)
         self.table_widgets.append(table_widget)
 
+    def make_confirmation_buttons(self, dialog: QDialog):
+        buttons_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(lambda: dialog.accept())
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(lambda: dialog.reject())
+        buttons_layout.addWidget(ok_button)
+        buttons_layout.addWidget(cancel_button)
+        return buttons_layout
+
     def set_table_data(self, table_name: str, row_idx: int, col_idx: int, cell_data: str | int):
         """Sets the data of the internal table.
         """
@@ -430,7 +440,6 @@ class ROTKXIGUI(QMainWindow):
         layout = QVBoxLayout()
         aspiration_layout = QHBoxLayout()
         target_layout = QHBoxLayout()
-        buttons_layout = QHBoxLayout()
 
         aspiration_layout.addWidget(aspiration_label)
         aspiration_layout.addWidget(aspiration_combo)
@@ -438,12 +447,7 @@ class ROTKXIGUI(QMainWindow):
         target_layout.addWidget(target_label)
         target_layout.addWidget(target_combo)
 
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(lambda: dialog.accept())
-        cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(lambda: dialog.reject())
-        buttons_layout.addWidget(ok_button)
-        buttons_layout.addWidget(cancel_button)
+        buttons_layout = self.make_confirmation_buttons(dialog)
 
         layout.addLayout(aspiration_layout)
         layout.addLayout(target_layout)
@@ -534,13 +538,7 @@ class ROTKXIGUI(QMainWindow):
 
             slider.valueChanged.connect(on_slider_value_changed)
 
-        buttons_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(lambda: dialog.accept())
-        cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(lambda: dialog.reject())
-        buttons_layout.addWidget(ok_button)
-        buttons_layout.addWidget(cancel_button)
+        buttons_layout = self.make_confirmation_buttons(dialog)
 
         main_layout = QVBoxLayout()
         main_layout.addLayout(sliders_layout)
@@ -563,10 +561,7 @@ class ROTKXIGUI(QMainWindow):
         dialog = QDialog()
         dialog.setWindowTitle('Alliances')
 
-        scroll_area = QScrollArea(dialog)
-        scroll_area.setWidgetResizable(True)
-        dialog_layout = QVBoxLayout(dialog)
-        dialog_layout.addWidget(scroll_area)
+        main_layout = QVBoxLayout()
 
         checkboxes_widget = QWidget()
         checkboxes_layout = QVBoxLayout(checkboxes_widget)
@@ -575,9 +570,6 @@ class ROTKXIGUI(QMainWindow):
         force_numbers = self.parse_alliance_value(alliance_value)
         alliance_values = self.get_values_by_enum(Force.ALLIANCE)
         force_rulers = self.get_values_by_enum(Force.RULER)
-        # allegiance_values = self.get_values_by_enum(Officer.ALLEGIANCE)
-        # ruler_allegiances = [allegiance_values[x]
-        #                      if x != 0xFFFF else 0xFF for x in force_rulers]
 
         checkboxes: list[QCheckBox] = []
 
@@ -594,11 +586,17 @@ class ROTKXIGUI(QMainWindow):
                 checkboxes_layout.addWidget(checkbox)
 
         checkboxes_widget.setLayout(checkboxes_layout)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(checkboxes_widget)
 
-        button = QPushButton('OK')
-        button.clicked.connect(dialog.accept)
-        dialog_layout.addWidget(button)
+        buttons_layout = self.make_confirmation_buttons(dialog)
+
+        main_layout.addWidget(scroll_area)
+        main_layout.addLayout(buttons_layout)
+
+        dialog.setLayout(main_layout)
 
         if dialog.exec_() != QDialog.Accepted:
             return
@@ -618,7 +616,6 @@ class ROTKXIGUI(QMainWindow):
                     'force', i, Force.ALLIANCE)
                 self.set_table_data(
                     'force', i, Force.ALLIANCE, old_alliance_value & ~new_alliance_value)
-        print()
 
     def sort_table(self, col_idx: int):
         """Sorts the table in ascending/descending order on a given column.
