@@ -1,5 +1,5 @@
-from enum import Enum
 from collections import defaultdict
+from enum import Enum
 
 NUM_OFFICERS = 850
 NUM_FORCES = 42
@@ -572,6 +572,24 @@ action_map = defaultdict(lambda: "Default", {
     0xC8: "Available",
 })
 
+
+affiliation_map = {
+    0x00: "Important",
+    0x01: "Normal",
+    0x02: "Ignore"
+}
+
+death_map = {
+    0x00: "Natural",
+    0x01: "Unnatural",
+}
+
+sex_map = {
+    0x00: "Male",
+    0x01: "Female",
+    0xFF: "None"
+}
+
 affinity_map = {
     0x00: "C",
     0x01: "B",
@@ -594,11 +612,10 @@ debate_map = {
 }
 
 strategy_map = {
-    0x2C: "Endless Might",
-    0x00: "National Desires",
-    0x01: "Local Desires",
-    0x02: "State Desires",
-    0x03: "Maintain"
+    0x00: "Unify China",
+    0x01: "Unify Region",
+    0x02: "Unify Province",
+    0x03: "Passive",
 }
 
 campaign_map = {
@@ -772,6 +789,7 @@ col_map = {
     'debatestyle': debate_map,
     'voice': voice_map,
     'location': city_map,
+    'service': city_map,
     'character': character_map,
     'tone': tone_map,
     'spearaffinity': affinity_map,
@@ -786,7 +804,10 @@ col_map = {
     'country': country_map,
     'type': item_type_map,
     'courtimportance': court_importance_map,
-    'strategictendency': strategy_map
+    'strategictendency': strategy_map,
+    'localaffiliation': affiliation_map,
+    'death': death_map,
+    'sex': sex_map
 }
 
 officer_columns = [
@@ -808,7 +829,8 @@ officer_columns = [
     'dislikedofficer5',
     'clan',
     'emperor',
-    'owner'
+    'owner',
+    'dependence'
 ]
 
 research_labels = [
@@ -849,6 +871,14 @@ aspiration_map = {
     0x04: "Unknown_1",
     0x05: "Unknown_2",
     0xFF: "Unused"
+}
+
+tribes = {
+    44: "Wuwan",
+    42: "Qiang",
+    43: "Shanyue",
+    45: "Nanman",
+    46: "Bandit"
 }
 
 ps2_scenarios = {

@@ -139,8 +139,10 @@ class ROTKXIGUI(QMainWindow):
             cell_text = self.get_specialty_text_from_value(cell_data)
         elif col_name in ["alliance", "research", "goal"]:
             cell_text = "Edit"
-        elif col_name == "force":
+        elif col_name in ["force", "allegiance"]:
             cell_text = self.get_force_ruler_name_by_force_id(cell_data)
+        elif 'growth' in col_name:
+            cell_text = growth_ability_map[cell_data]
         elif col_name in officer_columns:
             cell_text = self.get_officer_name_by_id(cell_data)
         elif col_name in col_map:
@@ -237,6 +239,8 @@ class ROTKXIGUI(QMainWindow):
         """
         if force_id == 0xFF:
             return "None"
+        elif force_id >= 42:
+            return tribes[force_id]
         ruler_id = self.get_values_by_enum(Force.RULER)[force_id]
         return self.get_officer_name_by_id(ruler_id)
 
@@ -317,6 +321,8 @@ class ROTKXIGUI(QMainWindow):
             cell_data = self.get_specialty_value_from_text(cell_text)
         elif col_name == "force":
             cell_data = self.get_force_id_by_force_ruler_name(cell_text)
+        elif 'growth' in col_name:
+            cell_data = reverse(growth_ability_map)[cell_text]
         elif col_name in officer_columns:
             cell_data = self.get_officer_id_by_name(cell_text)
         elif col_name in col_map:
@@ -364,6 +370,8 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == 'goal':
             self.set_goal(row_idx)
             return
+        elif 'growth' in col_name:
+            options = growth_ability_map.values()
         elif col_name == 'specialty':
             options = specialty_options.values()
         elif col_name == "force":
