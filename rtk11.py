@@ -137,7 +137,7 @@ class ROTKXIGUI(QMainWindow):
             cell_item.setBackground(QBrush(color))
         elif col_name == "specialty":
             cell_text = self.get_specialty_text_from_value(cell_data)
-        elif col_name in ["alliance", "research"]:
+        elif col_name in ["alliance", "research", "goal"]:
             cell_text = "Edit"
         elif col_name == "force":
             cell_text = self.get_force_ruler_name_by_force_id(cell_data)
@@ -301,7 +301,7 @@ class ROTKXIGUI(QMainWindow):
         col_name = self.get_column_name(table_name, col_idx)
         cell_text = cell_item.text()
 
-        if col_name in ['id', 'alliance', 'research']:
+        if col_name in ['id', 'alliance', 'research', 'goal']:
             return
         elif col_name == 'specialty':
             cell_data = self.get_specialty_value_from_text(cell_text)
@@ -350,6 +350,9 @@ class ROTKXIGUI(QMainWindow):
             return
         elif col_name == 'research':
             self.set_research(row_idx)
+            return
+        elif col_name == 'goal':
+            self.set_goal(row_idx)
             return
         elif col_name == 'specialty':
             options = specialty_options.values()
@@ -403,6 +406,101 @@ class ROTKXIGUI(QMainWindow):
         """
         return sum(research_level_values[level] << (28-i*4) for i, level in enumerate(research_levels))
 
+    def parse_goal_value(self, goal_value: int):
+        target = (goal_value >> 8) & 0xFF
+        aspiration = goal_value & 0xFF
+        return aspiration, target
+
+    def create_goal_value(self, aspiration: int, target: int):
+        return ((target & 0xFF) << 8) | (aspiration & 0xFF)
+
+    def set_goal(self, row_idx: int):
+        dialog = QDialog()
+        dialog.setWindowTitle("Set Aspiration and Target")
+
+        aspiration_combo = QComboBox()
+        target_combo = QComboBox()
+
+        for aspiration_type in aspiration_map.values():
+            aspiration_combo.addItem(aspiration_type)
+
+        aspiration_label = QLabel("Aspiration:")
+        target_label = QLabel("Target:")
+
+        layout = QVBoxLayout()
+        aspiration_layout = QHBoxLayout()
+        target_layout = QHBoxLayout()
+        buttons_layout = QHBoxLayout()
+
+        aspiration_layout.addWidget(aspiration_label)
+        aspiration_layout.addWidget(aspiration_combo)
+
+        target_layout.addWidget(target_label)
+        target_layout.addWidget(target_combo)
+
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(lambda: dialog.accept())
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(lambda: dialog.reject())
+        buttons_layout.addWidget(ok_button)
+        buttons_layout.addWidget(cancel_button)
+
+        layout.addLayout(aspiration_layout)
+        layout.addLayout(target_layout)
+        layout.addLayout(buttons_layout)
+
+        dialog.setLayout(layout)
+
+        def set_aspiration():
+            aspiration_text = aspiration_combo.currentText()
+            if aspiration_text == "Conquer China":
+                target_combo.clear()
+                target_combo.setDisabled(True)
+            elif aspiration_text == "Conquer Region":
+                target_combo.clear()
+                for target in conquer_region_map.values():
+                    target_combo.addItem(target)
+                target_combo.setEnabled(True)
+            elif aspiration_text == "Conquer Province":
+                target_combo.clear()
+                for target in conquer_province_map.values():
+                    target_combo.addItem(target)
+                target_combo.setEnabled(True)
+            elif aspiration_text == "Passive":
+                target_combo.clear()
+                target_combo.setDisabled(True)
+            else:
+                target_combo.clear()
+                target_combo.setDisabled(True)
+
+        goal_value = self.get_table_data('force', row_idx, Force.GOAL)
+        aspiration_value, target_value = self.parse_goal_value(goal_value)
+
+        aspiration_combo.currentIndexChanged.connect(set_aspiration)
+        aspiration_combo.setCurrentText(aspiration_map[aspiration_value])
+
+        if aspiration_value == 0x01:
+            target_combo.setCurrentText(conquer_region_map[target_value])
+        elif aspiration_value == 0x02:
+            target_combo.setCurrentText(conquer_province_map[target_value])
+
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        target_text = target_combo.currentText()
+        aspiration_text = aspiration_combo.currentText()
+        aspiration_value = reverse(aspiration_map)[aspiration_text]
+
+        if aspiration_value == 0x01:
+            target_value = reverse(conquer_region_map)[target_text]
+        elif aspiration_value == 0x02:
+            target_value = reverse(conquer_province_map)[target_text]
+        else:
+            target_value = 0xFF
+
+        new_goal_value = self.create_goal_value(aspiration_value, target_value)
+        self.set_table_data('force', row_idx, Force.GOAL, new_goal_value)
+
     def set_research(self, row_idx: int):
         """Opens a dialogue box with sliders for each individual research level.
         """
@@ -450,12 +548,14 @@ class ROTKXIGUI(QMainWindow):
 
         dialog.setLayout(main_layout)
 
-        if dialog.exec_() == QDialog.Accepted:
-            new_research_levels = [slider.value() for slider in sliders]
-            new_research_value = self.create_research_value(
-                new_research_levels)
-            self.set_table_data(
-                'force', row_idx, Force.RESEARCH, new_research_value)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        new_research_levels = [slider.value() for slider in sliders]
+        new_research_value = self.create_research_value(
+            new_research_levels)
+        self.set_table_data(
+            'force', row_idx, Force.RESEARCH, new_research_value)
 
     def set_alliance(self, row_idx: int):
         """Opens a dialogue box with checkboxes for all rulers to create alliances between them.

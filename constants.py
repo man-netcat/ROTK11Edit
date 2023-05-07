@@ -817,6 +817,38 @@ research_labels = [
 
 research_level_values = [0x0, 0x1, 0x3, 0x7, 0xf]
 
+conquer_region_map = {
+    0x00: "Hebei (Northern China)",
+    0x01: "Zhongyuan (Central Plains)",
+    0x02: "Xibei (Northwest)",
+    0x03: "Jiangnan (Jing and Yang Provinces)",
+    0x04: "Bashu (Yi Province)",
+    0x05: "Nanzhong (Yunnan and Jianning)",
+}
+
+conquer_province_map = {
+    0x00: "You Province (Xiangping, Beiping, Ji)",
+    0x01: "Ji & Bing Province (Nanpi, Pingyuan, Jinyang, Ye)",
+    0x02: "Qing & Xu Province (Beihai, Xiapi, Xiaopei, Shouchun)",
+    0x03: "Yan & Yu Province (Puyang, Chenliu, Xuchang, Runan)",
+    0x04: "Sili (Luoyang)",
+    0x05: "Jingzhao (Wan, Chang'an, Shangyong)",
+    0x06: "Liang Province (Anding, Tianshui, Wuwei)",
+    0x07: "Yang Province (Jianye, Wu, Huiji, Lujiang, Chaisang)",
+    0x08: "Jingbei (Jiangxia, Xinye, Xiangyang)",
+    0x09: "Jingnan (Jiangling, Changsha, Wuling, Guiyang, Lingling)",
+    0x0A: "Yi Province (Yong'an, Hanzhong, Zitong, Jiangzhou, Chengdu)",
+    0x0B: "Nanzhong (Jianning, Yunnan)",
+}
+
+aspiration_map = {
+    0x00: "Conquer China",
+    0x01: "Conquer Region",
+    0x02: "Conquer Province",
+    0x03: "Passive",
+    0xFF: "Unused"
+}
+
 ps2_scenarios = {
     name: offset for offset, name in zip(
         [0x1D3800 + 180224*i for i in range(10)],
