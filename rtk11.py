@@ -482,30 +482,10 @@ class ROTKXIGUI(QMainWindow):
         if ok and item and item in options:
             cell_item.setText(item)
 
-    def create_alliance_value(self, force_numbers: list[int]):
-        """Creates an alliance value for a given list of force numbers.
-        """
-        return reduce(lambda x, y: x | (1 << y), force_numbers, 0)
-
-    def parse_alliance_value(self, alliance_value: int):
-        """Parses an alliance value and returns the list of participating forces.
-        """
-        return [alliance_value for i in range(NUM_FORCES) if alliance_value & (1 << i)]
-
     def get_values_by_enum(self, enum_value):
         """Returns all values in the table for a column given an enum value representing that column.
         """
         return [row[enum_value] for row in self.table_datas[enum_value.__class__.__name__.lower()]['data']]
-
-    def parse_research_value(self, research_value: int):
-        """Parses the research value and returns the individual levels for each research tree.
-        """
-        return [(research_value >> (28-i*4)) & 0x0F for i in range(8)]
-
-    def create_research_value(self, research_levels: list[int]):
-        """Given a list of the individual research levels, returns the summed research value
-        """
-        return sum(research_level_values[level] << (28-i*4) for i, level in enumerate(research_levels))
 
     def parse_goal_value(self, goal_value: int):
         target = (goal_value >> 8) & 0xFF
@@ -679,6 +659,16 @@ class ROTKXIGUI(QMainWindow):
                             District.TARGET, new_goal_value)
         print(new_goal_value, behaviour_value, target_value)
 
+    def parse_research_value(self, research_value: int):
+        """Parses the research value and returns the individual levels for each research tree.
+        """
+        return [(research_value >> (28-i*4)) & 0x0F for i in range(8)]
+
+    def create_research_value(self, research_levels: list[int]):
+        """Given a list of the individual research levels, returns the summed research value
+        """
+        return sum(research_level_values[level] << (28-i*4) for i, level in enumerate(research_levels))
+
     def set_research(self, row_idx: int):
         """Opens a dialogue box with sliders for each individual research level.
         """
@@ -729,6 +719,19 @@ class ROTKXIGUI(QMainWindow):
         self.set_table_data(
             'force', row_idx, Force.RESEARCH, new_research_value)
 
+    def create_alliance_value(self, force_numbers: list[int], exclude_force_id: int):
+        """Creates an alliance value for a given list of force numbers, excluding the specified force ID."""
+        return reduce(
+            lambda x, y: x | (1 << y)
+            if y != exclude_force_id
+            else x, force_numbers, 0
+        )
+
+    def parse_alliance_value(self, alliance_value: int):
+        """Parses an alliance value and returns the list of participating forces.
+        """
+        return [i for i in range(NUM_FORCES) if alliance_value & (1 << i)]
+
     def set_alliance(self, row_idx: int):
         """Opens a dialogue box with checkboxes for all rulers to create alliances between them.
         """
@@ -756,6 +759,7 @@ class ROTKXIGUI(QMainWindow):
 
             checkboxes.append(checkbox)
 
+            # We only show actually used rulers
             if ruler_name != 'None':
                 checkboxes_layout.addWidget(checkbox)
 
@@ -775,21 +779,21 @@ class ROTKXIGUI(QMainWindow):
         if dialog.exec_() != QDialog.Accepted:
             return
 
+        # We consider the alliance being edited as part of the included values.
         checked = [
             i for i, checkbox in enumerate(checkboxes)
-            if checkbox.isChecked()]
+            if checkbox.isChecked()] + [row_idx]
 
-        new_alliance_value = self.create_alliance_value(checked)
-
-        for i, alliance_value in enumerate(alliance_values):
-            if i in checked:
+        for force_id, alliance_value in enumerate(alliance_values):
+            # Create the new alliance value, excluding the current force_id
+            new_alliance_value = self.create_alliance_value(checked, force_id)
+            if force_id in checked:
                 self.set_table_data(
-                    'force', i, Force.ALLIANCE, new_alliance_value)
+                    'force', force_id, Force.ALLIANCE, new_alliance_value)
             else:
-                old_alliance_value = self.get_table_data(
-                    'force', i, Force.ALLIANCE)
+                # We turn off the bits in the new alliance value for this force's alliance in this case.
                 self.set_table_data(
-                    'force', i, Force.ALLIANCE, old_alliance_value & ~new_alliance_value)
+                    'force', force_id, Force.ALLIANCE, alliance_value & ~new_alliance_value)
 
     def sort_table(self, col_idx: int):
         """Sorts the table in ascending/descending order on a given column.
