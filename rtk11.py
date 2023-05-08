@@ -49,6 +49,28 @@ class SaveThread(QThread):
 
 
 class ROTKXIGUI(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("ROTK XI Editor")
+        self.setWindowIcon(QIcon("icon.png"))
+        self.resize(800, 600)
+
+        self.init_functions()
+        self.init_menubar()
+
+        self.tab_widget = QTabWidget(self)
+        self.setCentralWidget(self.tab_widget)
+
+        self.table_widgets: list[QTableWidget] = []
+        self.table_datas = {}
+        self.sorting_order = Qt.AscendingOrder
+
+        self.new_scen_path: str = None
+        self.is_initialized = False
+        self.showMaximized()
+
+        self.open_file()
+
     def init_menubar(self):
         self.menubar = self.menuBar()
 
@@ -151,27 +173,6 @@ class ROTKXIGUI(QMainWindow):
         self.filter_action = QAction("Filter", self)
         self.filter_action.triggered.connect(self.filter_table)
         self.filter_toolbar.addAction(self.filter_action)
-
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("ROTK XI Editor")
-        self.setWindowIcon(QIcon("icon.png"))
-        self.resize(800, 600)
-
-        self.init_functions()
-        self.init_menubar()
-
-        self.tab_widget = QTabWidget(self)
-        self.setCentralWidget(self.tab_widget)
-
-        self.table_widgets: list[QTableWidget] = []
-        self.table_datas = {}
-        self.sorting_order = Qt.AscendingOrder
-
-        self.new_scen_path: str = None
-        self.is_initialized = False
-
-        self.open_file()
 
     def init_cell(self, cell_data: int | str, table_name: str, col_name: str) -> QTableWidgetItem:
         """Initialises the contents of a cell item based on its column.
@@ -495,8 +496,8 @@ class ROTKXIGUI(QMainWindow):
     def create_goal_value(self, aspiration: int, target: int):
         return ((target & 0xFF) << 8) | (aspiration & 0xFF)
 
-    def set_force_goal(self, row_idx: int):
-        dialog = QDialog()
+    def set_force_goal(self, editing_force_id: int):
+        dialog = QDialog(self)
         dialog.setWindowTitle("Set Aspiration and Target")
 
         aspiration_combo = QComboBox()
@@ -539,7 +540,7 @@ class ROTKXIGUI(QMainWindow):
             else:
                 target_combo.setDisabled(True)
 
-        goal_value = self.get_table_data('force', row_idx, Force.GOAL)
+        goal_value = self.get_table_data('force', editing_force_id, Force.GOAL)
         aspiration_value, target_value = self.parse_goal_value(goal_value)
 
         aspiration_combo.currentIndexChanged.connect(set_aspiration)
@@ -565,10 +566,11 @@ class ROTKXIGUI(QMainWindow):
             target_value = 0xFF
 
         new_goal_value = self.create_goal_value(aspiration_value, target_value)
-        self.set_table_data('force', row_idx, Force.GOAL, new_goal_value)
+        self.set_table_data(
+            'force', editing_force_id, Force.GOAL, new_goal_value)
 
-    def set_district_goal(self, row_idx: int):
-        dialog = QDialog()
+    def set_district_goal(self, editing_force_id: int):
+        dialog = QDialog(self)
         dialog.setWindowTitle("Set District Behaviour and Target")
 
         behaviour_combo = QComboBox()
@@ -618,7 +620,8 @@ class ROTKXIGUI(QMainWindow):
             else:
                 target_combo.setDisabled(True)
 
-        goal_value = self.get_table_data('district', row_idx, District.TARGET)
+        goal_value = self.get_table_data(
+            'district', editing_force_id, District.TARGET)
         behaviour_value, target_value = self.parse_goal_value(goal_value)
 
         print(goal_value, behaviour_value, target_value)
@@ -655,8 +658,8 @@ class ROTKXIGUI(QMainWindow):
             target_value = 0xFF
 
         new_goal_value = self.create_goal_value(behaviour_value, target_value)
-        self.set_table_data('district', row_idx,
-                            District.TARGET, new_goal_value)
+        self.set_table_data(
+            'district', editing_force_id, District.TARGET, new_goal_value)
         print(new_goal_value, behaviour_value, target_value)
 
     def parse_research_value(self, research_value: int):
@@ -669,13 +672,14 @@ class ROTKXIGUI(QMainWindow):
         """
         return sum(research_level_values[level] << (28-i*4) for i, level in enumerate(research_levels))
 
-    def set_research(self, row_idx: int):
+    def set_research(self, editing_force_id: int):
         """Opens a dialogue box with sliders for each individual research level.
         """
-        dialog = QDialog()
+        dialog = QDialog(self)
         dialog.setWindowTitle("Research Levels")
 
-        research_value = self.get_table_data('force', row_idx, Force.RESEARCH)
+        research_value = self.get_table_data(
+            'force', editing_force_id, Force.RESEARCH)
         research_levels = self.parse_research_value(research_value)
 
         sliders_layout = QGridLayout()
@@ -717,14 +721,14 @@ class ROTKXIGUI(QMainWindow):
         new_research_value = self.create_research_value(
             new_research_levels)
         self.set_table_data(
-            'force', row_idx, Force.RESEARCH, new_research_value)
+            'force', editing_force_id, Force.RESEARCH, new_research_value)
 
-    def create_alliance_value(self, force_numbers: list[int], exclude_force_id: int):
+    def create_alliance_value(self, force_ids: list[int], exclude_force_id: int):
         """Creates an alliance value for a given list of force numbers, excluding the specified force ID."""
         return reduce(
             lambda x, y: x | (1 << y)
             if y != exclude_force_id
-            else x, force_numbers, 0
+            else x, force_ids, 0
         )
 
     def parse_alliance_value(self, alliance_value: int):
@@ -732,10 +736,10 @@ class ROTKXIGUI(QMainWindow):
         """
         return [i for i in range(NUM_FORCES) if alliance_value & (1 << i)]
 
-    def set_alliance(self, row_idx: int):
+    def set_alliance(self, editing_force_id: int):
         """Opens a dialogue box with checkboxes for all rulers to create alliances between them.
         """
-        dialog = QDialog()
+        dialog = QDialog(self)
         dialog.setWindowTitle('Alliances')
 
         main_layout = QVBoxLayout()
@@ -743,8 +747,9 @@ class ROTKXIGUI(QMainWindow):
         checkboxes_widget = QWidget()
         checkboxes_layout = QVBoxLayout(checkboxes_widget)
 
-        alliance_value = self.get_table_data('force', row_idx, Force.ALLIANCE)
-        force_numbers = self.parse_alliance_value(alliance_value)
+        alliance_value = self.get_table_data(
+            'force', editing_force_id, Force.ALLIANCE)
+        force_ids = self.parse_alliance_value(alliance_value)
         alliance_values = self.get_values_by_enum(Force.ALLIANCE)
         force_rulers = self.get_values_by_enum(Force.RULER)
 
@@ -754,13 +759,13 @@ class ROTKXIGUI(QMainWindow):
             ruler_name = self.get_officer_name_by_id(ruler)
             checkbox = QCheckBox(f'{ruler_name}')
 
-            if force_id in force_numbers:
+            if force_id in force_ids:
                 checkbox.setChecked(True)
 
             checkboxes.append(checkbox)
 
             # We only show actually used rulers
-            if ruler_name != 'None' and force_id != row_idx:
+            if ruler_name != 'None' and force_id != editing_force_id:
                 checkboxes_layout.addWidget(checkbox)
 
         checkboxes_widget.setLayout(checkboxes_layout)
@@ -771,6 +776,16 @@ class ROTKXIGUI(QMainWindow):
 
         buttons_layout = self.make_confirmation_buttons(dialog)
 
+        def clear_all_checkboxes():
+            """Clears all the checkboxes in the list.
+            """
+            for checkbox in checkboxes:
+                checkbox.setChecked(False)
+
+        clear_button = QPushButton("Clear All")
+        clear_button.clicked.connect(clear_all_checkboxes)
+        buttons_layout.addWidget(clear_button)
+
         main_layout.addWidget(scroll_area)
         main_layout.addLayout(buttons_layout)
 
@@ -779,15 +794,16 @@ class ROTKXIGUI(QMainWindow):
         if dialog.exec_() != QDialog.Accepted:
             return
 
-        # We consider the alliance being edited as part of the included values.
+        # We consider the force being edited as part of the included values.
         checked = [
             force_id for force_id, checkbox in enumerate(checkboxes)
-            if checkbox.isChecked()] + [row_idx]
+            if checkbox.isChecked()] + [editing_force_id]
 
         for force_id, alliance_value in enumerate(alliance_values):
             # Create the new alliance value, excluding the current force_id
             new_alliance_value = self.create_alliance_value(checked, force_id)
             if force_id in checked:
+                # This force takes part in the alliance
                 self.set_table_data(
                     'force', force_id, Force.ALLIANCE, new_alliance_value)
             else:
