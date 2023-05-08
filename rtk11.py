@@ -750,17 +750,17 @@ class ROTKXIGUI(QMainWindow):
 
         checkboxes: list[QCheckBox] = []
 
-        for i, ruler in enumerate(force_rulers):
+        for force_id, ruler in enumerate(force_rulers):
             ruler_name = self.get_officer_name_by_id(ruler)
             checkbox = QCheckBox(f'{ruler_name}')
 
-            if i in force_numbers:
+            if force_id in force_numbers:
                 checkbox.setChecked(True)
 
             checkboxes.append(checkbox)
 
             # We only show actually used rulers
-            if ruler_name != 'None':
+            if ruler_name != 'None' and force_id != row_idx:
                 checkboxes_layout.addWidget(checkbox)
 
         checkboxes_widget.setLayout(checkboxes_layout)
@@ -781,7 +781,7 @@ class ROTKXIGUI(QMainWindow):
 
         # We consider the alliance being edited as part of the included values.
         checked = [
-            i for i, checkbox in enumerate(checkboxes)
+            force_id for force_id, checkbox in enumerate(checkboxes)
             if checkbox.isChecked()] + [row_idx]
 
         for force_id, alliance_value in enumerate(alliance_values):
