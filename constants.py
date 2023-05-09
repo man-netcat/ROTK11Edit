@@ -208,6 +208,20 @@ class Country(Enum):
         return self.value
 
 
+class Item(Enum):
+    ID = 0
+    NAME = 1
+    TYPE = 2
+    LOYALTY = 3
+    PICTURE = 4
+    OWNER = 5
+    CITY = 6
+    OWNERORCITY = 7
+
+    def __index__(self):
+        return self.value
+
+
 # 0xFF = index 255 maps to white
 colour_map = {
     0x00: 0x2828E8, 0x01: 0x387800, 0x02: 0xD00028, 0x03: 0x8C662A, 0x04: 0x200070, 0x05: 0x5A5A5A, 0x06: 0x20DEE0, 0x07: 0xDAD23A, 0x08: 0xF69CB2, 0x09: 0xA0D488,
@@ -306,8 +320,8 @@ city_map = {
     0x54: "Dong Tine",
     0x55: "Gong An",
     0x56: "Wu Xian",
-    0xFF: "Not Available",
-    0xFFFF: "Not Available",
+    0xFF: "None",
+    0xFFFF: "None",
 }
 
 officer_status_map = {
@@ -320,7 +334,7 @@ officer_status_map = {
     0x06: "Under aged",
     0x07: "Searchable",
     0x08: "Dead",
-    0xff: "Not available",
+    0xff: "None",
 }
 
 officer_ranks_map = {
@@ -657,7 +671,7 @@ item_type_map = {
     0x05: "Writings",
     0x06: "Imperial Seal",
     0x07: "Bronze Pheasant",
-    0xFF: "Not Available",
+    0xFF: "None",
 }
 
 title_map = {
@@ -671,7 +685,7 @@ title_map = {
     0x07: "Governor",
     0x08: "Lt. Governor",
     0x09: "None",
-    0xFF: "Not Available",
+    0xFF: "None",
 }
 
 ghost_officer_map = {

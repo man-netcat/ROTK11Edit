@@ -67,9 +67,10 @@ class ROTKXIGUI(QMainWindow):
 
         self.new_scen_path: str = None
         self.is_initialized = False
-        self.showMaximized()
 
         self.open_file()
+
+        self.showMaximized()
 
     def init_menubar(self):
         self.menubar = self.menuBar()
@@ -215,13 +216,13 @@ class ROTKXIGUI(QMainWindow):
         """Initialises a table widget with the data read from the file.
         """
         col_names = self.table_datas[table_name]['col_names']
-        table_data = self.table_datas[table_name]['data']
+        num_rows = self.table_datas[table_name]['num_rows']
 
         table_widget = QTableWidget(self)
         table_widget.setObjectName(table_name)
         table_widget.setColumnCount(len(col_names))
         table_widget.setHorizontalHeaderLabels(col_names)
-        table_widget.setRowCount(len(table_data))
+        table_widget.setRowCount(num_rows)
         table_widget.setSortingEnabled(True)
         table_widget.cellDoubleClicked.connect(self.on_cell_doubleclick)
         table_widget.itemChanged.connect(self.on_cell_update)
@@ -231,14 +232,14 @@ class ROTKXIGUI(QMainWindow):
         header.sectionClicked.connect(self.sort_table)
         header.setSectionsClickable(True)
 
-        for row_idx in range(len(table_data)):
+        for row_idx in range(num_rows):
             for col_idx, col_name in enumerate(col_names):
-                cell_data = table_data[row_idx][col_idx]
+                cell_data = self.get_table_data(table_name, row_idx, col_idx)
                 cell_item = self.init_cell(cell_data, table_name, col_name)
                 table_widget.setItem(row_idx, col_idx, cell_item)
 
         for col_idx, col_name in enumerate(col_names):
-            if any([substr in col_name for substr in ["unknown", "relationship", "ingame"]]):
+            if any([substr in col_name for substr in ["unknown", "relationship", "ingame", 'ownerorcity']]):
                 table_widget.setColumnHidden(col_idx, True)
 
         self.tab_widget.addTab(table_widget, table_name)
@@ -374,6 +375,43 @@ class ROTKXIGUI(QMainWindow):
             table_widget.setCurrentCell(row - 1, col)
         elif key == Qt.Key_Down and row < table_widget.rowCount() - 1:
             table_widget.setCurrentCell(row + 1, col)
+        elif key == Qt.Key_Tab:
+            # Tab: cycle to next tab
+            index = (self.tab_widget.currentIndex() +
+                     1) % self.tab_widget.count()
+            self.tab_widget.setCurrentIndex(index)
+        elif key == Qt.Key_Tab + 1:
+            # Shift+Tab: cycle to previous tab
+            index = (self.tab_widget.currentIndex() -
+                     1) % self.tab_widget.count()
+            self.tab_widget.setCurrentIndex(index)
+
+    def set_item_owner_city(self, cell_item: QTableWidgetItem, col_name: str):
+        table_widget = cell_item.tableWidget()
+        table_widget.itemChanged.disconnect(self.on_cell_update)
+        row_idx = cell_item.row()
+
+        if col_name == 'owner':
+            other_col_name = 'city'
+            other_col_idx = Item.CITY
+            other_cell_data = 0xFF
+            ownerorcity_value = 0x01
+        elif col_name == 'city':
+            other_col_name = 'owner'
+            other_col_idx = Item.OWNER
+            other_cell_data = 0xFFFF
+            ownerorcity_value = 0x00
+
+        other_cell_item = self.init_cell(
+            other_cell_data, 'item', other_col_name)
+        ownerorcity_item = self.init_cell(
+            ownerorcity_value, 'item', 'ownerorcity')
+        table_widget.setItem(row_idx, other_col_idx, other_cell_item)
+        table_widget.setItem(row_idx, Item.OWNERORCITY, ownerorcity_item)
+        self.set_table_data('item', row_idx, other_col_idx, other_cell_data)
+        self.set_table_data(
+            'item', row_idx, Item.OWNERORCITY, ownerorcity_value)
+        table_widget.itemChanged.connect(self.on_cell_update)
 
     def on_cell_update(self, cell_item: QTableWidgetItem):
         """Updates the data in the internal table when a cell in the table widgets is modified.
@@ -400,11 +438,15 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == 'country':
             cell_data = self.get_country_id_by_name(cell_text)
         elif col_name in col_map:
-            cell_data = self.get_reverse_column_mapping(cell_text)
+            cell_data = self.get_reverse_column_mapping(col_name, cell_text)
         elif self.datatypes[table_name][col_name] == 'int':
             cell_data = int(cell_text)
         else:
             cell_data = cell_text
+
+        if col_name in ['owner', 'city']:
+            # Set the other value to None
+            self.set_item_owner_city(cell_item, col_name)
 
         self.set_table_data(table_name, row_idx, col_idx, cell_data)
 
@@ -905,6 +947,7 @@ class ROTKXIGUI(QMainWindow):
                 self.table_datas[table_name] = {}
                 self.table_datas[table_name]['data'] = table_data
                 self.table_datas[table_name]['col_names'] = col_names
+                self.table_datas[table_name]['num_rows'] = len(table_data)
 
             # Initialise table widgets``
             for table_name in table_names:
