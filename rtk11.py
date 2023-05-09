@@ -387,6 +387,8 @@ class ROTKXIGUI(QMainWindow):
             self.tab_widget.setCurrentIndex(index)
 
     def set_item_owner_city(self, cell_item: QTableWidgetItem, col_name: str):
+        """When either the owner or city of an item is set, the other value is set to None
+        """
         table_widget = cell_item.tableWidget()
         table_widget.itemChanged.disconnect(self.on_cell_update)
         row_idx = cell_item.row()
