@@ -58,8 +58,43 @@ class ROTKXIGUI(QMainWindow):
         self.init_functions()
         self.init_menubar()
 
+        # Create a toolbar
+        self.toolbar = QToolBar(self)
+        self.addToolBar(Qt.BottomToolBarArea, self.toolbar)
+
+        # Create a spacer to push the button to the right side
+        spacer = QWidget(self)
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
+        def toggle_dynamic_widget():
+            if self.dynamic_widget.isVisible():
+                self.dynamic_widget.hide()
+            else:
+                self.dynamic_widget.show()
+
+        # Create a button to toggle the visibility of the dynamic widget
+        self.toggle_button = QPushButton("Hide/Show", self)
+        self.toggle_button.setMaximumWidth(100)
+        self.toggle_button.clicked.connect(toggle_dynamic_widget)
+
+        # Add the spacer and button to the toolbar
+        self.toolbar.addWidget(spacer)
+        self.toolbar.addWidget(self.toggle_button)
+
+        # Create a splitter widget
+        self.splitter = QSplitter(Qt.Horizontal, self)
+
+        # Add the tab widget to the splitter
         self.tab_widget = QTabWidget(self)
-        self.setCentralWidget(self.tab_widget)
+        self.splitter.addWidget(self.tab_widget)
+
+        # Add an empty widget to the splitter
+        self.dynamic_widget = QWidget(self)
+        self.splitter.addWidget(self.dynamic_widget)
+        self.dynamic_widget.hide()
+
+        # Set the splitter as the central widget
+        self.setCentralWidget(self.splitter)
 
         self.table_widgets: list[QTableWidget] = []
         self.table_datas = {}
@@ -116,7 +151,7 @@ class ROTKXIGUI(QMainWindow):
 
         # Add "About" action
         self.about_action = QAction("&About", self)
-        self.about_action.triggered.connect(self.show_about_dialog)
+        self.about_action.triggered.connect(self.show_about)
         self.help_menu.addAction(self.about_action)
 
     def select_theme(self):
@@ -158,9 +193,17 @@ class ROTKXIGUI(QMainWindow):
 
         dialog.exec_()
 
-    def show_about_dialog(self):
+    def show_about(self):
         about_text = "Available at https://github.com/rickt1998/rtk11edit"
-        QMessageBox.about(self, "About", about_text)
+        text_edit = QTextEdit(self.dynamic_widget)
+        text_edit.setPlainText(about_text)
+
+        # Add the QTextEdit to the layout of the dynamic widget
+        layout = QVBoxLayout(self.dynamic_widget)
+        layout.addWidget(text_edit)
+
+        # Show the dynamic widget
+        self.dynamic_widget.show()
 
     def init_functions(self):
         self.filter_toolbar = QToolBar(self)
@@ -224,7 +267,7 @@ class ROTKXIGUI(QMainWindow):
         table_widget.setHorizontalHeaderLabels(col_names)
         table_widget.setRowCount(num_rows)
         table_widget.setSortingEnabled(True)
-        table_widget.cellDoubleClicked.connect(self.on_cell_doubleclick)
+        table_widget.cellDoubleClicked.connect(self.on_cell_selected)
         table_widget.itemChanged.connect(self.on_cell_update)
         table_widget.keyPressEvent = self.on_key_pressed
 
@@ -364,7 +407,7 @@ class ROTKXIGUI(QMainWindow):
 
         if key == Qt.Key_Return or key == Qt.Key_Enter:
             if not item.flags() & Qt.ItemIsEditable:
-                self.on_cell_doubleclick(row, col)
+                self.on_cell_selected(row, col)
             else:
                 table_widget.editItem(item)
         elif key == Qt.Key_Left and col > 0:
@@ -470,12 +513,20 @@ class ROTKXIGUI(QMainWindow):
         """
         return sorted(self.officer_names()) + ["None"]
 
+    def get_officer_names_by_sex(self, sex: int) -> list[str]:
+        """Returns a list of officers for the given sex (0: Male, 1: Female)
+        """
+        officer_names = self.officer_names()
+        officer_sexes = self.get_values_by_enum(Officer.SEX)
+        return [officer_name for officer_name, officer_sex in zip(
+            officer_names, officer_sexes) if officer_sex == sex]
+
     def get_country_options(self) -> list[str]:
         """Returns the sorted list of options for countries, ending on 'None'.
         """
         return sorted(self.country_names()) + ["None"]
 
-    def on_cell_doubleclick(self, row_idx: int, col_idx: int):
+    def on_cell_selected(self, row_idx: int, col_idx: int):
         """Triggers upon doubleclicking a cell and calls the appropriate function depending on the column.
         """
         current_tab = self.tab_widget.currentIndex()
@@ -483,6 +534,10 @@ class ROTKXIGUI(QMainWindow):
         cell_item = current_table.item(row_idx, col_idx)
         table_name = current_table.objectName()
         col_name = self.get_column_name(table_name, col_idx)
+
+        if col_name in ['father', 'mother']:
+            if cell_item.text() == 'Parent':
+                self.set_parents(row_idx, col_name)
 
         if col_name == 'alliance':
             self.set_alliance(row_idx)
@@ -526,6 +581,77 @@ class ROTKXIGUI(QMainWindow):
 
         if ok and item and item in options:
             cell_item.setText(item)
+
+    def set_parents(self, editing_officer_id: int, column_name: str):
+        if column_name == 'father':
+            col_idx = Officer.FATHER
+            sex = 0  # Male
+        else:
+            col_idx = Officer.MOTHER
+            sex = 1  # Female
+        dialog = QDialog()
+        dialog.setWindowTitle("Set Shared Parent")
+
+        layout = QVBoxLayout(dialog)
+
+        spo_list = QListWidget(dialog)
+        spo_list.setSelectionMode(QListWidget.ExtendedSelection)
+        layout.addWidget(spo_list)
+
+        parent_ids = self.get_values_by_enum(col_idx)
+        editing_officer_parent_id = parent_ids[editing_officer_id]
+        spo_ids = [
+            officer_id
+            for officer_id, parent_id in enumerate(parent_ids)
+            if parent_id == editing_officer_parent_id]
+
+        spo_names = [
+            self.get_officer_name_by_id(officer_id)
+            for officer_id in spo_ids]
+
+        for spo_name in spo_names:
+            list_item = QListWidgetItem(spo_name)
+            spo_list.addItem(list_item)
+
+        combobox = QComboBox(dialog)
+        officer_names = self.get_officer_names_by_sex(sex)
+        combobox.addItems(officer_names)
+        combobox.setEditable(True)
+        layout.addWidget(combobox)
+
+        buttons_layout = QHBoxLayout()
+        layout.addLayout(buttons_layout)
+
+        add_button = QPushButton("Add Officer", dialog)
+
+        def add_value():
+            selected_value = combobox.currentText()
+            if selected_value not in officer_names:
+                return
+            list_item = QListWidgetItem(selected_value)
+            spo_list.addItem(list_item)
+
+        add_button.clicked.connect(add_value)
+        buttons_layout.addWidget(add_button)
+
+        remove_button = QPushButton("Remove Officer(s)", dialog)
+        remove_button.clicked.connect(lambda: [spo_list.takeItem(
+            spo_list.row(item)) for item in spo_list.selectedItems()])
+        buttons_layout.addWidget(remove_button)
+
+        confirmation_buttons = self.make_confirmation_buttons(dialog)
+        layout.addLayout(confirmation_buttons)
+
+        dialog.setLayout(layout)
+
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        selected_values = [
+            spo_list.item(i).text()
+            for i in range(spo_list.count())]
+
+        print(selected_values)
 
     def get_values_by_enum(self, enum_value):
         """Returns all values in the table for a column given an enum value representing that column.
