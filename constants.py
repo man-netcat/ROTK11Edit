@@ -1,10 +1,6 @@
 from collections import defaultdict
 from enum import Enum
 
-NUM_OFFICERS = 850
-NUM_FORCES = 42
-NUM_COUNTRIES = 84
-
 
 def reverse(d): return {v: k for k, v in d.items()}
 
@@ -686,70 +682,6 @@ title_map = {
     0x08: "Lt. Governor",
     0x09: "None",
     0xFF: "None",
-}
-
-ghost_officer_map = {
-    0xD007: "Yuan Shao's father (Yuan Cheng I guess)",
-    0xD107: "Yuan Yin's father",
-    0xD207: "Yuan Shu's & Yuan Yi's father (Yuan Feng, but weren't Shu and Yi cousins?)",
-    0xD307: "Wang Yun's father",
-    0xD407: "Wang Ling's father",
-    0xD507: "Kuai Liang's & Kuai Yue's father",
-    0xD607: "Xiahou Dun's father",
-    0xD707: "Xiahou De's & Xiahou Shang's father",
-    0xD807: "Xiahou Yuan's father",
-    0xD907: "Guanqiu Jian's & Guanqiu Xiu's father",
-    0xDA07: "Han Xuan's & Han Hao's father",
-    0xDB07: "Yan Baihu's & Yan Yu's father",
-    0xDC07: "Gao Gan's & Gao Rou's father",
-    0xDD07: "Gongsun Zan's & Gongsun Yue's father",
-    0xDE07: "Gongsun Fan's father",
-    0xDF07: "Cai He's & Cai Zhong's father",
-    0xE007: "Cai Mao's & Cai Shi's father (I thought they were siblings of Cai He and Zhong?)",
-    0xE107: "Sima Lang's, Sima Yi's & Sima Fu's father (Sima Fang I guess)",
-    0xE207: "Zhou Xin's & Zhou Ang's father",
-    0xE307: "Zhu Rong's & Dailai Dongzhu's father",
-    0xE407: "Xun Yu's & Xun Chen's father (Xun Gun I guess)",
-    0xE507: "Xun You's father",
-    0xE607: "Xun Xu's father",
-    0xE707: "Xiang Lang's father",
-    0xE807: "Xiang Chong's father",
-    0xE907: "Zhuge Jin's, Zhuge Liang's & Zhuge Jun's father (must be Zhuge Gui)",
-    0xEA07: "Shen Yi's & Shen Dan's father",
-    0xEB07: "Xin Ping's & Xin Pi's father",
-    0xEC07: "Cao Cao's father (Cao Song)",
-    0xED07: "Cao Xiu's father",
-    0xEE07: "Cao Zhen's father (Cao/Qin Shao)",
-    0xEF07: "Cao Ren's & Cao Chun's father (Cao Chi)",
-    0xF007: "Cao Hong's father",
-    0xF107: "Cao Mao's father (Cao Lin)",
-    0xF207: "Sun Huan's father",
-    0xF307: "Sun Shao's father",
-    0xF407: "Sun Jian's & Sun Jing's father",
-    0xF507: "Sun Xiu's father (General, not Emperor Sun Xiu)",
-    0xF607: "Sun Jun's father",
-    0xF707: "Sun Chen's father",
-    0xF807: "None",
-    0xF907: "Sun Xin's & Sun Zhen's father",
-    0xFA07: "Zhang Jiao's, Zhang Bao's & Zhang Liang's father",
-    0xFB07: "None",
-    0xFC07: "Zhang Ji's father (Dong Zhuo's general)",
-    0xFD07: "Zhang Xiu's father (Lord of Wan)",
-    0xFE07: "Zhang Lu's & Zhang Wei's father",
-    0xFF07: "Ding Feng's & Ding Feng's father",
-    0x0008: "Dong Zhuo's & Dong Min's father",
-    0x0108: "None",
-    0x0208: "Ma Dai's father",
-    0x0308: "Ma Liang's & Ma Su's father",
-    0x0408: "Mi Zhu's, Mi Fang's & Mi Shi's father",
-    0x0508: "Meng Huo's & Meng You's father",
-    0x0608: "Yang Bo's & Yang Song's father",
-    0x0708: "Lu Xun's father",
-    0x0808: "Lu Kai's father (Wu general)",
-    0x0908: "Liu Yao's & Liu Dai's father",
-    0x0A08: "Lu Kuang's & Lu Xiang's father",
-    0x0B08: "Wu Jing's & Wu Guotai's father",
-    0xFFFF: "None"
 }
 
 specialty_options = {

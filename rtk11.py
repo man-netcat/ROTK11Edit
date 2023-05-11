@@ -224,7 +224,9 @@ class ROTKXIGUI(QMainWindow):
         cell_item = QTableWidgetItem()
         cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
 
-        if col_name == "colour":
+        if col_name == 'id':
+            cell_text = int(cell_data)
+        elif col_name == "colour":
             color = QColor(colour_map[cell_data])
             cell_text = ''
             cell_item.setBackground(QBrush(color))
@@ -313,15 +315,18 @@ class ROTKXIGUI(QMainWindow):
         """
         return self.table_datas[table_name]['col_names'][col_idx]
 
+    def get_num_rows(self, table_name):
+        return self.table_datas[table_name]['num_rows']
+
     def officer_names(self) -> list[str]:
         """Returns an up-to-date list of all officer names (family + given names).
         """
-        return [self.get_officer_name_by_id(officer_id) for officer_id in range(NUM_OFFICERS)]
+        return [self.get_officer_name_by_id(officer_id) for officer_id in range(self.get_num_rows('officer'))]
 
     def country_names(self) -> list[str]:
         """Returns an up-to-date list of all country names
         """
-        return [self.get_country_name_by_id(country_id) for country_id in range(NUM_COUNTRIES)]
+        return [self.get_country_name_by_id(country_id) for country_id in range(self.get_num_rows('country'))]
 
     def get_specialty_text_from_value(self, value: int) -> str:
         """Parses the specialty text given a city specialty value.
@@ -339,7 +344,7 @@ class ROTKXIGUI(QMainWindow):
         """
         if force_id == 0xFF:
             return "None"
-        elif force_id >= NUM_FORCES:
+        elif force_id >= self.get_num_rows('force'):
             return tribes[force_id]
         ruler_id = self.get_values_by_enum(Force.RULER)[force_id]
         return self.get_officer_name_by_id(ruler_id)
@@ -357,7 +362,7 @@ class ROTKXIGUI(QMainWindow):
         """
         if officer_id == 0xFFFF:
             return "None"
-        elif officer_id >= NUM_OFFICERS:  # TODO Shared parent
+        elif officer_id >= self.get_num_rows('officer'):
             return "Parent"
         officer_familyname = self.get_table_data(
             'officer', officer_id, Officer.FAMILYNAME)
@@ -377,8 +382,8 @@ class ROTKXIGUI(QMainWindow):
         """
         if country_id == 0xFF:
             return "None"
-        elif country_id >= NUM_COUNTRIES:  # TODO Shared parent
-            return "Parent"
+        elif country_id >= self.get_num_rows('country'):
+            return "ERROR"
         return self.get_table_data('country', country_id, Country.NAME).replace('\x00', '').strip()
 
     def get_country_id_by_name(self, country_name: int) -> int:
@@ -470,7 +475,7 @@ class ROTKXIGUI(QMainWindow):
         col_name = self.get_column_name(table_name, col_idx)
         cell_text = cell_item.text()
 
-        if col_name in ['id', 'alliance', 'research', 'goal', 'target']:
+        if col_name in ['alliance', 'research', 'goal', 'target']:
             return
         elif col_name == 'specialty':
             cell_data = self.get_specialty_value_from_text(cell_text)
@@ -479,6 +484,8 @@ class ROTKXIGUI(QMainWindow):
         elif 'growth' in col_name:
             cell_data = reverse(growth_ability_map)[cell_text]
         elif col_name in officer_columns:
+            if cell_text == "Parent":
+                return
             cell_data = self.get_officer_id_by_name(cell_text)
         elif col_name == 'country':
             cell_data = self.get_country_id_by_name(cell_text)
@@ -582,7 +589,6 @@ class ROTKXIGUI(QMainWindow):
         elif col_name in col_map:
             options = col_map[col_name].values()
         else:
-            print("Unimplemented")
             return
 
         self.choose_option(cell_item, options)
@@ -601,20 +607,27 @@ class ROTKXIGUI(QMainWindow):
         if ok and item and item in options:
             cell_item.setText(item)
 
-    def make_unique_shared_parent_value(self, col_idx):
-        used_values = [value for value in self.get_values_by_enum(
-            col_idx) if value >= 850 and value != 0xFFFF]
-        print(used_values)
+    def make_unique_shared_parent_value(self, parent: int):
+        used_values = [
+            value
+            for value in self.get_values_by_enum(parent)
+            if value >= 850 and value != 0xFFFF]
+        n = 2000
+        while True:
+            if used_values.count(n) == 0:
+                return n
+            n += 1
 
     def set_parents(self, editing_officer_id: int, column_name: str):
-        # spo = Shared Parent Officer
-        # eop = Editing Officer Parent
+        current_tab = self.tab_widget.currentIndex()
+        current_table = self.table_widgets[current_tab]
+        current_table.itemChanged.disconnect(self.on_cell_update)
 
         if column_name == 'father':
-            col_idx = Officer.FATHER
+            parent_sex = Officer.FATHER
             sex = 0  # Male
         else:
-            col_idx = Officer.MOTHER
+            parent_sex = Officer.MOTHER
             sex = 1  # Female
 
         dialog = QDialog()
@@ -626,13 +639,13 @@ class ROTKXIGUI(QMainWindow):
         shared_parent_list.setSelectionMode(QListWidget.ExtendedSelection)
         layout.addWidget(shared_parent_list)
 
-        parent_ids = self.get_values_by_enum(col_idx)
+        parent_ids = self.get_values_by_enum(parent_sex)
 
         parent_value = parent_ids[editing_officer_id]
 
         if parent_value < 850 or parent_value == 0xFFFF:
             # We make a new available unique parent value
-            parent_value = self.make_unique_shared_parent_value(parent_value)
+            parent_value = self.make_unique_shared_parent_value(parent_sex)
             shared_parent_ids = [editing_officer_id]
         else:
             shared_parent_ids = [
@@ -654,11 +667,6 @@ class ROTKXIGUI(QMainWindow):
         combobox.setEditable(True)
         layout.addWidget(combobox)
 
-        buttons_layout = QHBoxLayout()
-        layout.addLayout(buttons_layout)
-
-        add_button = QPushButton("Add Officer", dialog)
-
         def add_value():
             selected_value = combobox.currentText()
             if selected_value not in officer_names or shared_parent_list.findItems(selected_value, Qt.MatchExactly):
@@ -666,13 +674,22 @@ class ROTKXIGUI(QMainWindow):
             list_item = QListWidgetItem(selected_value)
             shared_parent_list.addItem(list_item)
 
+        def remove_value():
+            selected_items = shared_parent_list.selectedItems()
+            for item in selected_items:
+                shared_parent_list.takeItem(shared_parent_list.row(item))
+
+        buttons_layout = QHBoxLayout()
+
+        add_button = QPushButton("Add Officer", dialog)
         add_button.clicked.connect(add_value)
         buttons_layout.addWidget(add_button)
 
         remove_button = QPushButton("Remove Officer(s)", dialog)
-        remove_button.clicked.connect(lambda: [shared_parent_list.takeItem(
-            shared_parent_list.row(item)) for item in shared_parent_list.selectedItems()])
+        remove_button.clicked.connect(remove_value)
         buttons_layout.addWidget(remove_button)
+
+        layout.addLayout(buttons_layout)
 
         confirmation_buttons = self.make_confirmation_buttons(dialog)
         layout.addLayout(confirmation_buttons)
@@ -680,19 +697,33 @@ class ROTKXIGUI(QMainWindow):
         dialog.setLayout(layout)
 
         if dialog.exec_() != QDialog.Accepted:
+            current_table.itemChanged.connect(self.on_cell_update)
             return
 
-        selected_values = [
+        selected_officers = [
             shared_parent_list.item(i).text()
             for i in range(shared_parent_list.count())]
 
-        officer_ids = [self.get_officer_id_by_name(officer_name)
-                       for officer_name in selected_values]
+        removed_officers = [
+            officer
+            for officer in spo_names
+            if officer not in selected_officers]
 
-        for officer_id in officer_ids:
+        for officer_name in removed_officers:
+            # Set the value for removed officers to None
+            officer_id = self.get_officer_id_by_name(officer_name)
+            self.set_table_data(
+                'officer', officer_id, parent_sex, 0xFFFF)
+            current_table.item(officer_id, parent_sex).setText('None')
+
+        for officer_name in selected_officers:
             # Set the shared parent value for each selected officer
-            self.set_table_data('officer', officer_id,
-                                col_idx, parent_value)
+            officer_id = self.get_officer_id_by_name(officer_name)
+            self.set_table_data(
+                'officer', officer_id, parent_sex, parent_value)
+            current_table.item(officer_id, parent_sex).setText('Parent')
+
+        current_table.itemChanged.connect(self.on_cell_update)
 
     def get_values_by_enum(self, enum_value):
         """Returns all values in the table for a column given an enum value representing that column.
@@ -835,8 +866,6 @@ class ROTKXIGUI(QMainWindow):
             'district', editing_force_id, District.TARGET)
         behaviour_value, target_value = self.parse_goal_value(goal_value)
 
-        print(goal_value, behaviour_value, target_value)
-
         behaviour_combo.currentIndexChanged.connect(set_behaviour)
         behaviour_combo.setCurrentText(district_behaviour_map[behaviour_value])
 
@@ -871,7 +900,6 @@ class ROTKXIGUI(QMainWindow):
         new_goal_value = self.create_goal_value(behaviour_value, target_value)
         self.set_table_data(
             'district', editing_force_id, District.TARGET, new_goal_value)
-        print(new_goal_value, behaviour_value, target_value)
 
     def parse_research_value(self, research_value: int):
         """Parses the research value and returns the individual levels for each research tree.
@@ -945,7 +973,7 @@ class ROTKXIGUI(QMainWindow):
     def parse_alliance_value(self, alliance_value: int):
         """Parses an alliance value and returns the list of participating forces.
         """
-        return [i for i in range(NUM_FORCES) if alliance_value & (1 << i)]
+        return [i for i in range(self.get_num_rows('force')) if alliance_value & (1 << i)]
 
     def set_alliance(self, editing_force_id: int):
         """Opens a dialogue box with checkboxes for all rulers to create alliances between them.
