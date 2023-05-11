@@ -662,7 +662,7 @@ class ROTKXIGUI(QMainWindow):
             shared_parent_list.addItem(list_item)
 
         combobox = QComboBox(dialog)
-        officer_names = self.get_officer_names_by_sex(sex)
+        officer_names = self.officer_names()
         combobox.addItems(officer_names)
         combobox.setEditable(True)
         layout.addWidget(combobox)
