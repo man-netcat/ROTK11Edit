@@ -526,6 +526,25 @@ class ROTKXIGUI(QMainWindow):
         """
         return sorted(self.country_names()) + ["None"]
 
+    def select_parent(self):
+        dialog = QDialog()
+
+        button1 = QPushButton("Select existing officer")
+        button2 = QPushButton("Select officers for shared parent")
+
+        button1.clicked.connect(lambda: dialog.done(0))
+        button2.clicked.connect(lambda: dialog.done(1))
+
+        button_layout = QVBoxLayout()
+        button_layout.addWidget(button1)
+        button_layout.addWidget(button2)
+
+        dialog.setLayout(button_layout)
+
+        dialog.exec_()
+
+        return dialog.result()
+
     def on_cell_selected(self, row_idx: int, col_idx: int):
         """Triggers upon doubleclicking a cell and calls the appropriate function depending on the column.
         """
@@ -535,11 +554,10 @@ class ROTKXIGUI(QMainWindow):
         table_name = current_table.objectName()
         col_name = self.get_column_name(table_name, col_idx)
 
-        if col_name in ['father', 'mother']:
-            if cell_item.text() == 'Parent':
-                self.set_parents(row_idx, col_name)
-
-        if col_name == 'alliance':
+        if col_name in ['father', 'mother'] and self.select_parent():
+            self.set_parents(row_idx, col_name)
+            return
+        elif col_name == 'alliance':
             self.set_alliance(row_idx)
             return
         elif col_name == 'research':
@@ -564,6 +582,7 @@ class ROTKXIGUI(QMainWindow):
         elif col_name in col_map:
             options = col_map[col_name].values()
         else:
+            print("Unimplemented")
             return
 
         self.choose_option(cell_item, options)
@@ -582,36 +601,52 @@ class ROTKXIGUI(QMainWindow):
         if ok and item and item in options:
             cell_item.setText(item)
 
+    def make_unique_shared_parent_value(self, col_idx):
+        used_values = [value for value in self.get_values_by_enum(
+            col_idx) if value >= 850 and value != 0xFFFF]
+        print(used_values)
+
     def set_parents(self, editing_officer_id: int, column_name: str):
+        # spo = Shared Parent Officer
+        # eop = Editing Officer Parent
+
         if column_name == 'father':
             col_idx = Officer.FATHER
             sex = 0  # Male
         else:
             col_idx = Officer.MOTHER
             sex = 1  # Female
+
         dialog = QDialog()
         dialog.setWindowTitle("Set Shared Parent")
 
         layout = QVBoxLayout(dialog)
 
-        spo_list = QListWidget(dialog)
-        spo_list.setSelectionMode(QListWidget.ExtendedSelection)
-        layout.addWidget(spo_list)
+        shared_parent_list = QListWidget(dialog)
+        shared_parent_list.setSelectionMode(QListWidget.ExtendedSelection)
+        layout.addWidget(shared_parent_list)
 
         parent_ids = self.get_values_by_enum(col_idx)
-        editing_officer_parent_id = parent_ids[editing_officer_id]
-        spo_ids = [
-            officer_id
-            for officer_id, parent_id in enumerate(parent_ids)
-            if parent_id == editing_officer_parent_id]
+
+        parent_value = parent_ids[editing_officer_id]
+
+        if parent_value < 850 or parent_value == 0xFFFF:
+            # We make a new available unique parent value
+            parent_value = self.make_unique_shared_parent_value(parent_value)
+            shared_parent_ids = [editing_officer_id]
+        else:
+            shared_parent_ids = [
+                officer_id
+                for officer_id, parent_id in enumerate(parent_ids)
+                if parent_id == parent_value]
 
         spo_names = [
             self.get_officer_name_by_id(officer_id)
-            for officer_id in spo_ids]
+            for officer_id in shared_parent_ids]
 
         for spo_name in spo_names:
             list_item = QListWidgetItem(spo_name)
-            spo_list.addItem(list_item)
+            shared_parent_list.addItem(list_item)
 
         combobox = QComboBox(dialog)
         officer_names = self.get_officer_names_by_sex(sex)
@@ -626,17 +661,17 @@ class ROTKXIGUI(QMainWindow):
 
         def add_value():
             selected_value = combobox.currentText()
-            if selected_value not in officer_names:
+            if selected_value not in officer_names or shared_parent_list.findItems(selected_value, Qt.MatchExactly):
                 return
             list_item = QListWidgetItem(selected_value)
-            spo_list.addItem(list_item)
+            shared_parent_list.addItem(list_item)
 
         add_button.clicked.connect(add_value)
         buttons_layout.addWidget(add_button)
 
         remove_button = QPushButton("Remove Officer(s)", dialog)
-        remove_button.clicked.connect(lambda: [spo_list.takeItem(
-            spo_list.row(item)) for item in spo_list.selectedItems()])
+        remove_button.clicked.connect(lambda: [shared_parent_list.takeItem(
+            shared_parent_list.row(item)) for item in shared_parent_list.selectedItems()])
         buttons_layout.addWidget(remove_button)
 
         confirmation_buttons = self.make_confirmation_buttons(dialog)
@@ -648,10 +683,16 @@ class ROTKXIGUI(QMainWindow):
             return
 
         selected_values = [
-            spo_list.item(i).text()
-            for i in range(spo_list.count())]
+            shared_parent_list.item(i).text()
+            for i in range(shared_parent_list.count())]
 
-        print(selected_values)
+        officer_ids = [self.get_officer_id_by_name(officer_name)
+                       for officer_name in selected_values]
+
+        for officer_id in officer_ids:
+            # Set the shared parent value for each selected officer
+            self.set_table_data('officer', officer_id,
+                                col_idx, parent_value)
 
     def get_values_by_enum(self, enum_value):
         """Returns all values in the table for a column given an enum value representing that column.
