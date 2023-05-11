@@ -525,8 +525,10 @@ class ROTKXIGUI(QMainWindow):
         """
         officer_names = self.officer_names()
         officer_sexes = self.get_values_by_enum(Officer.SEX)
-        return [officer_name for officer_name, officer_sex in zip(
-            officer_names, officer_sexes) if officer_sex == sex]
+        return sorted([
+            officer_name
+            for officer_name, officer_sex in zip(officer_names, officer_sexes)
+            if officer_sex == sex])
 
     def get_country_options(self) -> list[str]:
         """Returns the sorted list of options for countries, ending on 'None'.
@@ -561,9 +563,12 @@ class ROTKXIGUI(QMainWindow):
         table_name = current_table.objectName()
         col_name = self.get_column_name(table_name, col_idx)
 
-        if col_name in ['father', 'mother'] and self.select_parent():
-            self.set_parents(row_idx, col_name)
-            return
+        if col_name in ['father', 'mother']:
+            if self.select_parent():
+                self.set_parents(row_idx, col_name)
+                return
+            sex = col_name == 'mother'
+            options = self.get_officer_names_by_sex(sex)
         elif col_name == 'alliance':
             self.set_alliance(row_idx)
             return
