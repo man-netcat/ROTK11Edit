@@ -463,6 +463,36 @@ class ROTKXIGUI(QMainWindow):
             'item', row_idx, Item.OWNERORCITY, ownerorcity_value)
         table_widget.itemChanged.connect(self.on_cell_update)
 
+    def get_items_by_value(self, table_name: str, col_name: str, value: int | str):
+        # Find the table widget by name
+        table = self.findChild(QTableWidget, table_name)
+        if table is None:
+            raise ValueError(f"No table found with name '{table_name}'")
+
+        column_index = table.horizontalHeaderItem(col_name).column()
+        items = []
+        for row in range(table.rowCount()):
+            item = table.item(row, column_index)
+            if item is not None and item.text() == str(value):
+                items.append(item)
+        return items
+
+    def update_officer_name(self, editing_officer_id: int):
+        old_officer_name = self.get_officer_name_by_id(editing_officer_id)
+        new_officer_name = "TODO"
+        for table_widget in self.table_widgets:
+            table_widget.itemChanged.disconnect(self.on_cell_update)
+            table_name = table_widget.objectName()
+            for col_idx in range(table_widget.columnCount()):
+                col_name = self.get_column_name(table_name, col_idx)
+                if col_name not in officer_columns:
+                    continue
+                items: list[QTableWidgetItem] = self.get_items_by_value(
+                    table_name, col_name, old_officer_name)
+                for item in items:
+                    item.setText(new_officer_name)
+            table_widget.itemChanged.connect(self.on_cell_update)
+
     def on_cell_update(self, cell_item: QTableWidgetItem):
         """Updates the data in the internal table when a cell in the table widgets is modified.
         """
@@ -499,6 +529,8 @@ class ROTKXIGUI(QMainWindow):
         if col_name in ['owner', 'city']:
             # Set the other value to None
             self.set_item_owner_city(cell_item, col_name)
+        elif col_name in ['givenname', 'familyname']:
+            self.update_officer_name(row_idx, cell_text)
 
         self.set_table_data(table_name, row_idx, col_idx, cell_data)
 
@@ -554,6 +586,17 @@ class ROTKXIGUI(QMainWindow):
 
         return dialog.result()
 
+    def get_data_idx_from_table_idx(self, table: QTableWidget, row_idx: int):
+        return table.item(row_idx, 0).data(Qt.DisplayRole) - 1
+
+    def get_table_idx_from_data_idx(self, table_name: str, data_idx: int):
+        table = self.findChild(QTableWidget, table_name)
+        for row in range(table.rowCount()):
+            item = table.item(row, 0)
+            if item.data(Qt.DisplayRole) - 1 == data_idx:
+                return row
+        return -1
+
     def on_cell_selected(self, row_idx: int, col_idx: int):
         """Triggers upon doubleclicking a cell and calls the appropriate function depending on the column.
         """
@@ -562,24 +605,25 @@ class ROTKXIGUI(QMainWindow):
         cell_item = current_table.item(row_idx, col_idx)
         table_name = current_table.objectName()
         col_name = self.get_column_name(table_name, col_idx)
+        data_idx = self.get_data_idx_from_table_idx(current_table, row_idx)
 
         if col_name in ['father', 'mother']:
             if self.select_parent():
-                self.set_parents(row_idx, col_name)
+                self.set_parents(data_idx, col_name)
                 return
             sex = col_name == 'mother'
             options = self.get_officer_names_by_sex(sex)
         elif col_name == 'alliance':
-            self.set_alliance(row_idx)
+            self.set_alliance(data_idx)
             return
         elif col_name == 'research':
-            self.set_research(row_idx)
+            self.set_research(data_idx)
             return
         elif col_name == 'goal':
-            self.set_force_goal(row_idx)
+            self.set_force_goal(data_idx)
             return
         elif col_name == 'target':
-            self.set_district_goal(row_idx)
+            self.set_district_goal(data_idx)
             return
         elif 'growth' in col_name:
             options = growth_ability_map.values()
@@ -613,6 +657,7 @@ class ROTKXIGUI(QMainWindow):
             cell_item.setText(item)
 
     def make_unique_shared_parent_value(self, parent: int):
+        # NOTE: Could theoretically overflow
         used_values = [
             value
             for value in self.get_values_by_enum(parent)
@@ -623,17 +668,12 @@ class ROTKXIGUI(QMainWindow):
                 return n
             n += 1
 
-    def set_parents(self, editing_officer_id: int, column_name: str):
+    def set_parents(self, editing_officer_id: int, col_name: str):
         current_tab = self.tab_widget.currentIndex()
         current_table = self.table_widgets[current_tab]
         current_table.itemChanged.disconnect(self.on_cell_update)
 
-        if column_name == 'father':
-            parent_sex = Officer.FATHER
-            sex = 0  # Male
-        else:
-            parent_sex = Officer.MOTHER
-            sex = 1  # Female
+        parent_sex = Officer.FATHER if col_name == 'father' else Officer.MOTHER
 
         dialog = QDialog()
         dialog.setWindowTitle("Set Shared Parent")
@@ -717,16 +757,18 @@ class ROTKXIGUI(QMainWindow):
         for officer_name in removed_officers:
             # Set the value for removed officers to None
             officer_id = self.get_officer_id_by_name(officer_name)
+            row_idx = self.get_table_idx_from_data_idx('officer', officer_id)
             self.set_table_data(
                 'officer', officer_id, parent_sex, 0xFFFF)
-            current_table.item(officer_id, parent_sex).setText('None')
+            current_table.item(row_idx, parent_sex).setText('None')
 
         for officer_name in selected_officers:
             # Set the shared parent value for each selected officer
             officer_id = self.get_officer_id_by_name(officer_name)
+            row_idx = self.get_table_idx_from_data_idx('officer', officer_id)
             self.set_table_data(
                 'officer', officer_id, parent_sex, parent_value)
-            current_table.item(officer_id, parent_sex).setText('Parent')
+            current_table.item(row_idx, parent_sex).setText('Parent')
 
         current_table.itemChanged.connect(self.on_cell_update)
 
