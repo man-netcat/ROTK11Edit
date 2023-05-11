@@ -464,18 +464,12 @@ class ROTKXIGUI(QMainWindow):
         table_widget.itemChanged.connect(self.on_cell_update)
 
     def get_items_by_value(self, table_name: str, col_name: str, value: int | str):
-        # Find the table widget by name
         table = self.findChild(QTableWidget, table_name)
-        if table is None:
-            raise ValueError(f"No table found with name '{table_name}'")
-
         column_index = table.horizontalHeaderItem(col_name).column()
-        items = []
-        for row in range(table.rowCount()):
-            item = table.item(row, column_index)
-            if item is not None and item.text() == str(value):
-                items.append(item)
-        return items
+        return [
+            table.item(row, column_index)
+            for row in range(table.rowCount())
+            if table.item(row, column_index).text() == str(value)]
 
     def update_officer_name(self, editing_officer_id: int):
         old_officer_name = self.get_officer_name_by_id(editing_officer_id)
@@ -589,13 +583,14 @@ class ROTKXIGUI(QMainWindow):
     def get_data_idx_from_table_idx(self, table: QTableWidget, row_idx: int):
         return table.item(row_idx, 0).data(Qt.DisplayRole) - 1
 
-    def get_table_idx_from_data_idx(self, table_name: str, data_idx: int):
+    def get_table_item_from_data_idx(self, table_name: str, data_idx: int, col_idx: int):
         table = self.findChild(QTableWidget, table_name)
         for row in range(table.rowCount()):
             item = table.item(row, 0)
             if item.data(Qt.DisplayRole) - 1 == data_idx:
-                return row
-        return -1
+                row_idx = row
+                break
+        return table.item(row_idx, col_idx)
 
     def on_cell_selected(self, row_idx: int, col_idx: int):
         """Triggers upon doubleclicking a cell and calls the appropriate function depending on the column.
@@ -757,18 +752,20 @@ class ROTKXIGUI(QMainWindow):
         for officer_name in removed_officers:
             # Set the value for removed officers to None
             officer_id = self.get_officer_id_by_name(officer_name)
-            row_idx = self.get_table_idx_from_data_idx('officer', officer_id)
+            cell_item = self.get_table_item_from_data_idx(
+                'officer', officer_id, parent_sex)
             self.set_table_data(
                 'officer', officer_id, parent_sex, 0xFFFF)
-            current_table.item(row_idx, parent_sex).setText('None')
+            cell_item.setText('None')
 
         for officer_name in selected_officers:
             # Set the shared parent value for each selected officer
             officer_id = self.get_officer_id_by_name(officer_name)
-            row_idx = self.get_table_idx_from_data_idx('officer', officer_id)
+            cell_item = self.get_table_item_from_data_idx(
+                'officer', officer_id, parent_sex)
             self.set_table_data(
                 'officer', officer_id, parent_sex, parent_value)
-            current_table.item(row_idx, parent_sex).setText('Parent')
+            cell_item.setText('Parent')
 
         current_table.itemChanged.connect(self.on_cell_update)
 
