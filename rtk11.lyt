@@ -191,8 +191,13 @@ district 0x27FD7 8 42
 end
 
 begin
+city 0x02D2 1 42
+    colour int 1
+end
+
+begin
 city 0x2814F 81 42
-    force int 1
+    district int 1
     maxtroops int 4
     troops int 4
     gold int 4
@@ -219,7 +224,7 @@ end
 
 begin
 gate_port 0x28E99 64 45
-    force int 1
+    district int 1
     troops int 4
     gold int 4
     food int 4
