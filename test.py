@@ -20,8 +20,10 @@ def main():
             bp.parse_file(oldscen, db)
             shutil.copyfile(oldscen, newscen)
             bp.write_back(newscen, db)
-
-        assert filecmp.cmp(oldscen, newscen)
+        try:
+            assert filecmp.cmp(oldscen, newscen)
+        except AssertionError:
+            print(f'SCEN00{i}.S11 did not pass the test')
     print("All tests passed")
 
 

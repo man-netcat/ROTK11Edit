@@ -9,7 +9,7 @@ scenario 0x5A 631 1
     month int 1
     unknown int 1
     name str 26
-    desc str 600
+    description str 600
 end
 
 # Change gamemode to 01 for rise of heroes
@@ -25,7 +25,7 @@ end
 begin
 force 0x3A4 607 42
     difficulty int 1
-    desc str 606
+    description str 606
 end
 
 # death either 00 for natural, 01 for unnatural
@@ -245,7 +245,7 @@ end
 begin
 country 0x299D9 103 84
     name str 17
-    desc str 80
+    description str 80
     unknown1 int 1
     unknown2 int 1
     used int 1

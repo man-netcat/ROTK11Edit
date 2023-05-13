@@ -18,7 +18,7 @@ class Scenario(Enum):
     MONTH = 3
     UNKNOWN = 4
     NAME = 5
-    DESC = 6
+    DESCRIPTION = 6
     INGAMEYEAR = 7
     INGAMEMONTH = 8
     UNKNOWN2 = 9
@@ -32,7 +32,7 @@ class Scenario(Enum):
 class Force(Enum):
     ID = 0
     DIFFICULTY = 1
-    DESC = 2
+    DESCRIPTION = 2
     RULER = 3
     STRATEGIST = 4
     RELATIONSHIP1 = 5
@@ -252,7 +252,7 @@ class Gate_port(Enum):
 class Country(Enum):
     ID = 0
     NAME = 1
-    DESC = 2
+    DESCRIPTION = 2
     UNKNOWN1 = 3
     UNKNOWN2 = 4
     USED = 5

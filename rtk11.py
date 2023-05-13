@@ -233,7 +233,7 @@ class ROTKXIGUI(QMainWindow):
             cell_item.setBackground(QBrush(color))
         elif col_name == "specialty":
             cell_text = self.get_specialty_text_from_value(cell_data)
-        elif col_name in ["alliance", "research", "goal", "target"]:
+        elif col_name in ["alliance", "research", "goal", "target", "specifictarget"]:
             cell_text = "Edit"
         elif col_name in ["allegiance", "district"]:
             cell_text = self.get_district_ruler_by_district_id(cell_data)
@@ -285,7 +285,7 @@ class ROTKXIGUI(QMainWindow):
                 table_widget.setItem(row_idx, col_idx, cell_item)
 
         for col_idx, col_name in enumerate(col_names):
-            if any([substr in col_name for substr in ["unknown", "relationship", "ingame", "ownerorcity"]]):
+            if any([substr in col_name for substr in ["relationship", "ingame", "ownerorcity"]]):
                 table_widget.setColumnHidden(col_idx, True)
 
         self.tab_widget.addTab(table_widget, table_name)
@@ -647,6 +647,9 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "target":
             self.set_district_goal(data_idx)
             return
+        elif col_name == "specifictarget":
+            self.set_specific_goal(data_idx)
+            return
         elif "growth" in col_name:
             options = growth_ability_map.values()
         elif col_name == "specialty":
@@ -672,8 +675,7 @@ class ROTKXIGUI(QMainWindow):
         """
         combo_box = QComboBox()
         combo_box.addItems(options)
-        combo_box.setEditText(cell_item.text())
-        combo_box.setInsertPolicy(QComboBox.NoInsert)
+        combo_box.setEditable(True)
 
         item, ok = QInputDialog.getItem(
             self, "Choose option", "Select an option:", options)
@@ -818,9 +820,9 @@ class ROTKXIGUI(QMainWindow):
 
         aspiration_combo = QComboBox()
         target_combo = QComboBox()
+        target_combo.setEditable(True)
 
-        for aspiration_type in aspiration_map.values():
-            aspiration_combo.addItem(aspiration_type)
+        aspiration_combo.addItems(aspiration_map.values())
 
         aspiration_label = QLabel("Aspiration:")
         target_label = QLabel("Target:")
@@ -848,13 +850,13 @@ class ROTKXIGUI(QMainWindow):
             target_combo.clear()
             target_combo.setEnabled(True)
             if aspiration_text == "Conquer Region":
-                for target in conquer_region_map.values():
-                    target_combo.addItem(target)
+                targets = conquer_region_map.values()
             elif aspiration_text == "Conquer Province":
-                for target in conquer_province_map.values():
-                    target_combo.addItem(target)
+                targets = conquer_province_map.values()
             else:
                 target_combo.setDisabled(True)
+                return
+            target_combo.addItems(targets)
 
         goal_value = self.get_table_data("force", editing_force_id, Force.GOAL)
         aspiration_value, target_value = self.parse_goal_value(goal_value)
@@ -885,15 +887,15 @@ class ROTKXIGUI(QMainWindow):
         self.set_table_data(
             "force", editing_force_id, Force.GOAL, new_goal_value)
 
-    def set_district_goal(self, editing_force_id: int):
+    def set_district_goal(self, editing_district_id: int):
         dialog = QDialog(self)
         dialog.setWindowTitle("Set District Behaviour and Target")
 
         behaviour_combo = QComboBox()
         target_combo = QComboBox()
+        target_combo.setEditable(True)
 
-        for behaviour_type in district_behaviour_map.values():
-            behaviour_combo.addItem(behaviour_type)
+        behaviour_combo.addItems(district_behaviour_map.values())
 
         behaviour_label = QLabel("Behaviour:")
         target_label = QLabel("Target:")
@@ -920,25 +922,21 @@ class ROTKXIGUI(QMainWindow):
             behaviour_text = behaviour_combo.currentText()
             target_combo.clear()
             target_combo.setEnabled(True)
-            target_combo.setEditable(True)
             if behaviour_text == "Destroy Force":
                 targets = self.get_force_ruler_options()
-                for target in targets:
-                    target_combo.addItem(target)
             elif behaviour_text == "Conquer Region":
-                for target in conquer_region_map.values():
-                    target_combo.addItem(target)
+                targets = conquer_region_map.values()
             elif behaviour_text == "Conquer Province":
-                for target in conquer_province_map.values():
-                    target_combo.addItem(target)
+                targets = conquer_province_map.values()
             elif behaviour_text == "Conquer City/Gate/Port":
-                for target in city_map.values():
-                    target_combo.addItem(target)
+                targets = city_map.values()
             else:
                 target_combo.setDisabled(True)
+                return
+            target_combo.addItems(targets)
 
         goal_value = self.get_table_data(
-            "district", editing_force_id, District.TARGET)
+            "district", editing_district_id, District.TARGET)
         behaviour_value, target_value = self.parse_goal_value(goal_value)
 
         behaviour_combo.currentIndexChanged.connect(set_behaviour)
@@ -974,7 +972,82 @@ class ROTKXIGUI(QMainWindow):
 
         new_goal_value = self.create_goal_value(behaviour_value, target_value)
         self.set_table_data(
-            "district", editing_force_id, District.TARGET, new_goal_value)
+            "district", editing_district_id, District.TARGET, new_goal_value)
+
+    def set_specific_goal(self, editing_district_id: int):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Set District Behaviour and Target")
+
+        behaviour_combo = QComboBox()
+        target_combo = QComboBox()
+        target_combo.setEditable(True)
+
+        behaviour_combo.addItems(specific_behaviour_map.values())
+
+        behaviour_label = QLabel("Behaviour:")
+        target_label = QLabel("Target:")
+
+        layout = QVBoxLayout()
+        behaviour_layout = QHBoxLayout()
+        target_layout = QHBoxLayout()
+
+        behaviour_layout.addWidget(behaviour_label)
+        behaviour_layout.addWidget(behaviour_combo)
+
+        target_layout.addWidget(target_label)
+        target_layout.addWidget(target_combo)
+
+        buttons_layout = self.make_confirmation_buttons(dialog)
+
+        layout.addLayout(behaviour_layout)
+        layout.addLayout(target_layout)
+        layout.addLayout(buttons_layout)
+
+        dialog.setLayout(layout)
+
+        def set_behaviour():
+            behaviour_text = behaviour_combo.currentText()
+            target_combo.clear()
+            target_combo.setEnabled(True)
+            if behaviour_text == "Conquer City":
+                targets = city_map.values()
+            elif behaviour_text == "Diplomacy":
+                targets = self.get_force_ruler_options()
+            else:
+                target_combo.setDisabled(True)
+                return
+            target_combo.addItems(targets)
+
+        goal_value = self.get_table_data(
+            "district", editing_district_id, District.SPECIFICTARGET)
+        behaviour_value, target_value = self.parse_goal_value(goal_value)
+
+        behaviour_combo.currentIndexChanged.connect(set_behaviour)
+        behaviour_combo.setCurrentText(district_behaviour_map[behaviour_value])
+
+        if behaviour_value == 0x03:
+            target_combo.setCurrentText(city_map[target_value])
+        elif behaviour_value == 0x04:
+            target_text = self.get_force_ruler_name_by_id(target_value)
+            target_combo.setCurrentText(target_text)
+
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        target_text = target_combo.currentText()
+        behaviour_text = behaviour_combo.currentText()
+        behaviour_value = reverse(district_behaviour_map)[behaviour_text]
+
+        if behaviour_value == 0x03:
+            target_value = reverse(city_map)[target_text]
+        elif behaviour_value == 0x04:
+            target_value = self.get_force_ruler_options().index(target_text)
+        else:
+            target_value = 0xFF
+
+        new_goal_value = self.create_goal_value(behaviour_value, target_value)
+        self.set_table_data(
+            "district", editing_district_id, District.SPECIFICTARGET, new_goal_value)
 
     def parse_research_value(self, research_value: int):
         """Parses the research value and returns the individual levels for each research tree.

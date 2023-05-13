@@ -490,6 +490,15 @@ specialty_hex = [int(n, 16) for n in [
     '000000000001'
 ]]
 
+guilecards_values = {
+    0x00: "None",
+    0x08: "Yell",
+    0x10: "Reflect",
+    0x20: "Ignore",
+    0x40: "Calm",
+    0x80: "Frenzy",
+}
+
 gamemode_map = {
     0x00: "Normal",
     0x01: "Rise of Heroes"
@@ -595,8 +604,17 @@ district_behaviour_map = {
     0x02: "Conquer Province",
     0x03: "Conquer City/Gate/Port",
     0x04: "Passive",
-    0x05: "Methodical",
+    0x05: "Protect the Emperor",
     0xFF: "Unused"
+}
+
+specific_behaviour_map = {
+    0x00: "Sustain Armaments",
+    0x01: "Sustain Interior Affairs",
+    0x02: "Assure Human Resources",
+    0x03: "Conquer City",
+    0x04: "Diplomacy",
+    0x05: "Emergent Defense"
 }
 
 tribes = {
