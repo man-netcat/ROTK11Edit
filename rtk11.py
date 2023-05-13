@@ -37,16 +37,17 @@ class SaveThread(QThread):
         progress = 0
         with connect(self.db_path, isolation_level=None) as conn:
             for table_name, table_info in self.table_datas.items():
-                table_data = table_info['data']
-                col_names = table_info['col_names']
-                placeholders = ','.join(['?'] * len(col_names))
+                table_data = table_info["data"]
+                col_names = table_info["col_names"]
+                placeholders = ",".join(["?"] * len(col_names))
+                col_names_string = ", ".join(col_names)
                 for row_idx in table_data:
                     conn.execute(
-                        f"REPLACE INTO {table_name} ({','.join(col_names)}) VALUES ({placeholders})", row_idx)
+                        f"REPLACE INTO {table_name} ({col_names_string}) VALUES ({placeholders})", row_idx)
                     progress += 1
                     self.save_progress.emit(progress)
 
-        with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=self.file_offset) as bp:
+        with BinaryParser("rtk11.lyt", encoding="shift-jis", file_offset=self.file_offset) as bp:
             bp.write_back(self.scen_path, self.db_path)
 
 
@@ -159,12 +160,12 @@ class ROTKXIGUI(QMainWindow):
     def select_theme(self):
         def set_light_theme():
             self.setStyleSheet(qdarkstyle.load_stylesheet(
-                qt_api='pyqt5', palette=qdarkstyle.LightPalette))
+                qt_api="pyqt5", palette=qdarkstyle.LightPalette))
             self.update()
 
         def set_dark_theme():
             self.setStyleSheet(qdarkstyle.load_stylesheet(
-                qt_api='pyqt5', palette=qdarkstyle.DarkPalette))
+                qt_api="pyqt5", palette=qdarkstyle.DarkPalette))
             self.update()
 
         dialog = QDialog(self)
@@ -224,11 +225,11 @@ class ROTKXIGUI(QMainWindow):
         cell_item = QTableWidgetItem()
         cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
 
-        if col_name == 'id':
+        if col_name == "id":
             cell_text = int(cell_data)
         elif col_name == "colour":
             color = QColor(colour_map[cell_data])
-            cell_text = ''
+            cell_text = cell_data
             cell_item.setBackground(QBrush(color))
         elif col_name == "specialty":
             cell_text = self.get_specialty_text_from_value(cell_data)
@@ -236,19 +237,19 @@ class ROTKXIGUI(QMainWindow):
             cell_text = "Edit"
         elif col_name in ["allegiance", "district"]:
             cell_text = self.get_district_ruler_by_district_id(cell_data)
-        elif 'growth' in col_name:
+        elif "growth" in col_name:
             cell_text = growth_ability_map[cell_data]
         elif col_name in officer_columns:
             cell_text = self.get_officer_name_by_id(cell_data)
-        elif col_name == 'country':
+        elif col_name == "country":
             cell_text = self.get_country_name_by_id(cell_data)
         elif col_name in col_map:
             cell_text = col_map[col_name][cell_data]
-        elif self.datatypes[table_name][col_name] == 'int':
+        elif self.datatypes[table_name][col_name] == "int":
             cell_text = int(cell_data)
             cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
-        elif self.datatypes[table_name][col_name] == 'str':
-            cell_text = cell_data.replace('\x00', '')
+        elif self.datatypes[table_name][col_name] == "str":
+            cell_text = cell_data.replace("\x00", "")
             cell_item.setTextAlignment(
                 QTextOption.WrapAtWordBoundaryOrAnywhere)
             cell_item.setTextAlignment(Qt.AlignVCenter)
@@ -260,8 +261,8 @@ class ROTKXIGUI(QMainWindow):
     def init_table_widget(self, table_name: str):
         """Initialises a table widget with the data read from the file.
         """
-        col_names = self.table_datas[table_name]['col_names']
-        num_rows = self.table_datas[table_name]['num_rows']
+        col_names = self.table_datas[table_name]["col_names"]
+        num_rows = self.table_datas[table_name]["num_rows"]
 
         table_widget = QTableWidget(self)
         table_widget.setObjectName(table_name)
@@ -284,7 +285,7 @@ class ROTKXIGUI(QMainWindow):
                 table_widget.setItem(row_idx, col_idx, cell_item)
 
         for col_idx, col_name in enumerate(col_names):
-            if any([substr in col_name for substr in ["unknown", "relationship", "ingame", 'ownerorcity']]):
+            if any([substr in col_name for substr in ["unknown", "relationship", "ingame", "ownerorcity"]]):
                 table_widget.setColumnHidden(col_idx, True)
 
         self.tab_widget.addTab(table_widget, table_name)
@@ -304,30 +305,30 @@ class ROTKXIGUI(QMainWindow):
         """Sets the data of the internal table.
         """
         print((table_name, row_idx, col_idx, cell_data))
-        self.table_datas[table_name]['data'][row_idx][col_idx] = cell_data
+        self.table_datas[table_name]["data"][row_idx][col_idx] = cell_data
 
     def get_table_data(self, table_name: str, row_idx: int, col_idx: int) -> str | int:
         """Retrieves data from the internal table.
         """
-        return self.table_datas[table_name]['data'][row_idx][col_idx]
+        return self.table_datas[table_name]["data"][row_idx][col_idx]
 
     def get_column_name(self, table_name: str, col_idx: int) -> str:
         """Returns the name of a column in a table given its index.
         """
-        return self.table_datas[table_name]['col_names'][col_idx]
+        return self.table_datas[table_name]["col_names"][col_idx]
 
     def get_num_rows(self, table_name):
-        return self.table_datas[table_name]['num_rows']
+        return self.table_datas[table_name]["num_rows"]
 
     def officer_names(self) -> list[str]:
         """Returns an up-to-date list of all officer names (family + given names).
         """
-        return [self.get_officer_name_by_id(officer_id) for officer_id in range(self.get_num_rows('officer'))]
+        return [self.get_officer_name_by_id(officer_id) for officer_id in range(self.get_num_rows("officer"))]
 
     def country_names(self) -> list[str]:
         """Returns an up-to-date list of all country names
         """
-        return [self.get_country_name_by_id(country_id) for country_id in range(self.get_num_rows('country'))]
+        return [self.get_country_name_by_id(country_id) for country_id in range(self.get_num_rows("country"))]
 
     def get_specialty_text_from_value(self, value: int) -> str:
         """Parses the specialty text given a city specialty value.
@@ -345,13 +346,13 @@ class ROTKXIGUI(QMainWindow):
         """
         if force_id == 0xFF:
             return "None"
-        elif force_id >= self.get_num_rows('force'):
+        elif force_id >= self.get_num_rows("force"):
             return tribes[force_id]
         ruler_id = self.get_values_by_enum(Force.RULER)[force_id]
         return self.get_officer_name_by_id(ruler_id)
 
     def get_force_id_by_force_ruler_name(self, ruler_name: str) -> int:
-        """Returns the force id given its ruler's name.
+        """Returns the force id given its ruler"s name.
         """
         if ruler_name == "None":
             return 0xFF
@@ -363,13 +364,13 @@ class ROTKXIGUI(QMainWindow):
         """
         if district_id == 0xFF:
             return "None"
-        elif district_id >= self.get_num_rows('force'):
+        elif district_id >= self.get_num_rows("force"):
             return tribes[district_id]
-        ruler_id = self.get_table_data('district', district_id, District.RULER)
+        ruler_id = self.get_table_data("district", district_id, District.RULER)
         return self.get_officer_name_by_id(ruler_id)
 
     def get_district_id_by_district_ruler_name(self, ruler_name: str) -> str:
-        """Return the index of the district given its ruler's name.
+        """Return the index of the district given its ruler"s name.
         """
         if ruler_name == "None":
             return 0xFF
@@ -381,13 +382,13 @@ class ROTKXIGUI(QMainWindow):
         """
         if officer_id == 0xFFFF:
             return "None"
-        elif officer_id >= self.get_num_rows('officer'):
+        elif officer_id >= self.get_num_rows("officer"):
             return "Parent"
         officer_familyname = self.get_table_data(
-            'officer', officer_id, Officer.FAMILYNAME)
+            "officer", officer_id, Officer.FAMILYNAME)
         officer_givenname = self.get_table_data(
-            'officer', officer_id, Officer.GIVENNAME)
-        return (officer_familyname + ' ' + officer_givenname).replace('\x00', '').strip()
+            "officer", officer_id, Officer.GIVENNAME)
+        return (officer_familyname + " " + officer_givenname).replace("\x00", "").strip()
 
     def get_officer_id_by_name(self, officer_name: str) -> int:
         """Returns the id of an officer given its name.
@@ -401,9 +402,9 @@ class ROTKXIGUI(QMainWindow):
         """
         if country_id == 0xFF:
             return "None"
-        elif country_id >= self.get_num_rows('country'):
+        elif country_id >= self.get_num_rows("country"):
             return "ERROR"
-        return self.get_table_data('country', country_id, Country.NAME).replace('\x00', '').strip()
+        return self.get_table_data("country", country_id, Country.NAME).replace("\x00", "").strip()
 
     def get_country_id_by_name(self, country_name: int) -> int:
         """Returns the id of a country given its name
@@ -460,26 +461,26 @@ class ROTKXIGUI(QMainWindow):
         table_widget.itemChanged.disconnect(self.on_cell_update)
         row_idx = cell_item.row()
 
-        if col_name == 'owner':
-            other_col_name = 'city'
+        if col_name == "owner":
+            other_col_name = "city"
             other_col_idx = Item.CITY
             other_cell_data = 0xFF
             ownerorcity_value = 0x01
-        elif col_name == 'city':
-            other_col_name = 'owner'
+        elif col_name == "city":
+            other_col_name = "owner"
             other_col_idx = Item.OWNER
             other_cell_data = 0xFFFF
             ownerorcity_value = 0x00
 
         other_cell_item = self.init_cell(
-            other_cell_data, 'item', other_col_name)
+            other_cell_data, "item", other_col_name)
         ownerorcity_item = self.init_cell(
-            ownerorcity_value, 'item', 'ownerorcity')
+            ownerorcity_value, "item", "ownerorcity")
         table_widget.setItem(row_idx, other_col_idx, other_cell_item)
         table_widget.setItem(row_idx, Item.OWNERORCITY, ownerorcity_item)
-        self.set_table_data('item', row_idx, other_col_idx, other_cell_data)
+        self.set_table_data("item", row_idx, other_col_idx, other_cell_data)
         self.set_table_data(
-            'item', row_idx, Item.OWNERORCITY, ownerorcity_value)
+            "item", row_idx, Item.OWNERORCITY, ownerorcity_value)
         table_widget.itemChanged.connect(self.on_cell_update)
 
     def get_items_by_value(self, table_name: str, col_name: str, value: int | str):
@@ -518,40 +519,40 @@ class ROTKXIGUI(QMainWindow):
         col_name = self.get_column_name(table_name, col_idx)
         cell_text = cell_item.text()
 
-        if col_name in ['alliance', 'research', 'goal', 'target']:
+        if col_name in ["alliance", "research", "goal", "target"]:
             return
-        elif col_name == 'specialty':
+        elif col_name == "specialty":
             cell_data = self.get_specialty_value_from_text(cell_text)
-        elif col_name in ['allegiance', 'district']:
+        elif col_name in ["allegiance", "district"]:
             cell_data = self.get_district_id_by_district_ruler_name(cell_text)
-        elif 'growth' in col_name:
+        elif "growth" in col_name:
             cell_data = reverse(growth_ability_map)[cell_text]
         elif col_name in officer_columns:
             if cell_text == "Parent":
                 return
             cell_data = self.get_officer_id_by_name(cell_text)
-        elif col_name == 'country':
+        elif col_name == "country":
             cell_data = self.get_country_id_by_name(cell_text)
         elif col_name in col_map:
             cell_data = self.get_reverse_column_mapping(col_name, cell_text)
-        elif self.datatypes[table_name][col_name] == 'int':
+        elif self.datatypes[table_name][col_name] == "int":
             cell_data = int(cell_text)
         else:
             cell_data = cell_text
 
-        if col_name in ['owner', 'city']:
+        if col_name in ["owner", "city"]:
             # Set the other value to None
             self.set_item_owner_city(cell_item, col_name)
-        elif col_name in ['givenname', 'familyname']:
+        elif col_name in ["givenname", "familyname"]:
             self.update_officer_name(row_idx, cell_text)
 
         self.set_table_data(table_name, row_idx, col_idx, cell_data)
 
         # Also set in-game year and month if either is changed
-        if col_name == 'year':
-            self.set_table_data('scenario', 0, Scenario.INGAMEYEAR, cell_data)
-        elif col_name == 'month':
-            self.set_table_data('scenario', 0, Scenario.INGAMEMONTH, cell_data)
+        if col_name == "year":
+            self.set_table_data("scenario", 0, Scenario.INGAMEYEAR, cell_data)
+        elif col_name == "month":
+            self.set_table_data("scenario", 0, Scenario.INGAMEMONTH, cell_data)
 
     def get_force_ruler_options(self) -> list[str]:
         """Returns the list of all force rulers.
@@ -568,7 +569,7 @@ class ROTKXIGUI(QMainWindow):
         return sorted([officer for officer in officer_names if officer_names.index(officer) in ruler_ids]) + ["None"]
 
     def get_officer_options(self) -> list[str]:
-        """Returns the sorted list of options for officers, ending on 'None'.
+        """Returns the sorted list of options for officers, ending on "None".
         """
         return sorted(self.officer_names()) + ["None"]
 
@@ -583,7 +584,7 @@ class ROTKXIGUI(QMainWindow):
             if officer_sex == sex])
 
     def get_country_options(self) -> list[str]:
-        """Returns the sorted list of options for countries, ending on 'None'.
+        """Returns the sorted list of options for countries, ending on "None".
         """
         return sorted(self.country_names()) + ["None"]
 
@@ -628,35 +629,35 @@ class ROTKXIGUI(QMainWindow):
         col_name = self.get_column_name(table_name, col_idx)
         data_idx = self.get_data_idx_from_table_idx(current_table, row_idx)
 
-        if col_name in ['father', 'mother']:
+        if col_name in ["father", "mother"]:
             if self.select_parent():
                 self.set_parents(data_idx, col_name)
                 return
-            sex = col_name == 'mother'
+            sex = col_name == "mother"
             options = self.get_officer_names_by_sex(sex)
-        elif col_name == 'alliance':
+        elif col_name == "alliance":
             self.set_alliance(data_idx)
             return
-        elif col_name == 'research':
+        elif col_name == "research":
             self.set_research(data_idx)
             return
-        elif col_name == 'goal':
+        elif col_name == "goal":
             self.set_force_goal(data_idx)
             return
-        elif col_name == 'target':
+        elif col_name == "target":
             self.set_district_goal(data_idx)
             return
-        elif 'growth' in col_name:
+        elif "growth" in col_name:
             options = growth_ability_map.values()
-        elif col_name == 'specialty':
+        elif col_name == "specialty":
             options = specialty_options.values()
         elif col_name == "force":
             options = self.get_force_ruler_options()
-        elif col_name in ['district', 'allegiance']:
+        elif col_name in ["allegiance", "district"]:
             options = self.get_district_ruler_options()
         elif col_name in officer_columns:
             options = self.get_officer_options()
-        elif col_name == 'country':
+        elif col_name == "country":
             options = self.get_country_options()
         elif col_name in col_map:
             options = col_map[col_name].values()
@@ -697,7 +698,7 @@ class ROTKXIGUI(QMainWindow):
         current_table = self.table_widgets[current_tab]
         current_table.itemChanged.disconnect(self.on_cell_update)
 
-        parent_sex = Officer.FATHER if col_name == 'father' else Officer.MOTHER
+        parent_sex = Officer.FATHER if col_name == "father" else Officer.MOTHER
 
         dialog = QDialog()
         dialog.setWindowTitle("Set Shared Parent")
@@ -782,26 +783,26 @@ class ROTKXIGUI(QMainWindow):
             # Set the value for removed officers to None
             officer_id = self.get_officer_id_by_name(officer_name)
             cell_item = self.get_table_item_from_data_idx(
-                'officer', officer_id, parent_sex)
+                "officer", officer_id, parent_sex)
             self.set_table_data(
-                'officer', officer_id, parent_sex, 0xFFFF)
-            cell_item.setText('None')
+                "officer", officer_id, parent_sex, 0xFFFF)
+            cell_item.setText("None")
 
         for officer_name in selected_officers:
             # Set the shared parent value for each selected officer
             officer_id = self.get_officer_id_by_name(officer_name)
             cell_item = self.get_table_item_from_data_idx(
-                'officer', officer_id, parent_sex)
+                "officer", officer_id, parent_sex)
             self.set_table_data(
-                'officer', officer_id, parent_sex, parent_value)
-            cell_item.setText('Parent')
+                "officer", officer_id, parent_sex, parent_value)
+            cell_item.setText("Parent")
 
         current_table.itemChanged.connect(self.on_cell_update)
 
     def get_values_by_enum(self, enum_value):
         """Returns all values in the table for a column given an enum value representing that column.
         """
-        return [row[enum_value] for row in self.table_datas[enum_value.__class__.__name__.lower()]['data']]
+        return [row[enum_value] for row in self.table_datas[enum_value.__class__.__name__.lower()]["data"]]
 
     def parse_goal_value(self, goal_value: int):
         target = (goal_value >> 8) & 0xFF
@@ -855,7 +856,7 @@ class ROTKXIGUI(QMainWindow):
             else:
                 target_combo.setDisabled(True)
 
-        goal_value = self.get_table_data('force', editing_force_id, Force.GOAL)
+        goal_value = self.get_table_data("force", editing_force_id, Force.GOAL)
         aspiration_value, target_value = self.parse_goal_value(goal_value)
 
         aspiration_combo.currentIndexChanged.connect(set_aspiration)
@@ -882,7 +883,7 @@ class ROTKXIGUI(QMainWindow):
 
         new_goal_value = self.create_goal_value(aspiration_value, target_value)
         self.set_table_data(
-            'force', editing_force_id, Force.GOAL, new_goal_value)
+            "force", editing_force_id, Force.GOAL, new_goal_value)
 
     def set_district_goal(self, editing_force_id: int):
         dialog = QDialog(self)
@@ -919,6 +920,7 @@ class ROTKXIGUI(QMainWindow):
             behaviour_text = behaviour_combo.currentText()
             target_combo.clear()
             target_combo.setEnabled(True)
+            target_combo.setEditable(True)
             if behaviour_text == "Destroy Force":
                 targets = self.get_force_ruler_options()
                 for target in targets:
@@ -936,7 +938,7 @@ class ROTKXIGUI(QMainWindow):
                 target_combo.setDisabled(True)
 
         goal_value = self.get_table_data(
-            'district', editing_force_id, District.TARGET)
+            "district", editing_force_id, District.TARGET)
         behaviour_value, target_value = self.parse_goal_value(goal_value)
 
         behaviour_combo.currentIndexChanged.connect(set_behaviour)
@@ -972,7 +974,7 @@ class ROTKXIGUI(QMainWindow):
 
         new_goal_value = self.create_goal_value(behaviour_value, target_value)
         self.set_table_data(
-            'district', editing_force_id, District.TARGET, new_goal_value)
+            "district", editing_force_id, District.TARGET, new_goal_value)
 
     def parse_research_value(self, research_value: int):
         """Parses the research value and returns the individual levels for each research tree.
@@ -991,7 +993,7 @@ class ROTKXIGUI(QMainWindow):
         dialog.setWindowTitle("Research Levels")
 
         research_value = self.get_table_data(
-            'force', editing_force_id, Force.RESEARCH)
+            "force", editing_force_id, Force.RESEARCH)
         research_levels = self.parse_research_value(research_value)
 
         sliders_layout = QGridLayout()
@@ -1033,7 +1035,7 @@ class ROTKXIGUI(QMainWindow):
         new_research_value = self.create_research_value(
             new_research_levels)
         self.set_table_data(
-            'force', editing_force_id, Force.RESEARCH, new_research_value)
+            "force", editing_force_id, Force.RESEARCH, new_research_value)
 
     def create_alliance_value(self, force_ids: list[int], exclude_force_id: int):
         """Creates an alliance value for a given list of force numbers, excluding the specified force ID."""
@@ -1046,13 +1048,13 @@ class ROTKXIGUI(QMainWindow):
     def parse_alliance_value(self, alliance_value: int):
         """Parses an alliance value and returns the list of participating forces.
         """
-        return [i for i in range(self.get_num_rows('force')) if alliance_value & (1 << i)]
+        return [i for i in range(self.get_num_rows("force")) if alliance_value & (1 << i)]
 
     def set_alliance(self, editing_force_id: int):
         """Opens a dialogue box with checkboxes for all rulers to create alliances between them.
         """
         dialog = QDialog(self)
-        dialog.setWindowTitle('Alliances')
+        dialog.setWindowTitle("Alliances")
 
         main_layout = QVBoxLayout()
 
@@ -1060,7 +1062,7 @@ class ROTKXIGUI(QMainWindow):
         checkboxes_layout = QVBoxLayout(checkboxes_widget)
 
         alliance_value = self.get_table_data(
-            'force', editing_force_id, Force.ALLIANCE)
+            "force", editing_force_id, Force.ALLIANCE)
         force_ids = self.parse_alliance_value(alliance_value)
         alliance_values = self.get_values_by_enum(Force.ALLIANCE)
         force_rulers = self.get_values_by_enum(Force.RULER)
@@ -1069,7 +1071,7 @@ class ROTKXIGUI(QMainWindow):
 
         for force_id, ruler in enumerate(force_rulers):
             ruler_name = self.get_officer_name_by_id(ruler)
-            checkbox = QCheckBox(f'{ruler_name}')
+            checkbox = QCheckBox(f"{ruler_name}")
 
             if force_id in force_ids:
                 checkbox.setChecked(True)
@@ -1077,7 +1079,7 @@ class ROTKXIGUI(QMainWindow):
             checkboxes.append(checkbox)
 
             # We only show actually used rulers
-            if ruler_name != 'None' and force_id != editing_force_id:
+            if ruler_name != "None" and force_id != editing_force_id:
                 checkboxes_layout.addWidget(checkbox)
 
         checkboxes_widget.setLayout(checkboxes_layout)
@@ -1117,11 +1119,11 @@ class ROTKXIGUI(QMainWindow):
             if force_id in checked:
                 # This force takes part in the alliance
                 self.set_table_data(
-                    'force', force_id, Force.ALLIANCE, new_alliance_value)
+                    "force", force_id, Force.ALLIANCE, new_alliance_value)
             else:
-                # We turn off the bits in the new alliance value for this force's alliance in this case.
+                # We turn off the bits in the new alliance value for this force"s alliance in this case.
                 self.set_table_data(
-                    'force', force_id, Force.ALLIANCE, alliance_value & ~new_alliance_value)
+                    "force", force_id, Force.ALLIANCE, alliance_value & ~new_alliance_value)
 
     def sort_table(self, col_idx: int):
         """Sorts the table in ascending/descending order on a given column.
@@ -1183,24 +1185,24 @@ class ROTKXIGUI(QMainWindow):
 
         self.tab_widget.clear()
 
-        self.db_path = os.path.join(tempfile.gettempdir(), 'rtk11.db')
+        self.db_path = os.path.join(tempfile.gettempdir(), "rtk11.db")
 
         if os.path.exists(self.db_path):
             os.remove(self.db_path)
 
         # This reads the data from the scenario file into the database
-        with BinaryParser('rtk11.lyt', encoding='shift-jis', file_offset=self.file_offset) as bp:
+        with BinaryParser("rtk11.lyt", encoding="shift-jis", file_offset=self.file_offset) as bp:
             bp.parse_file(self.old_scen_path, self.db_path)
             self.datatypes = {
                 tablename: {
                     col_idx[0]: col_idx[1]
-                    for section in tabledata['sections']
-                    for col_idx in section['data']
+                    for section in tabledata["sections"]
+                    for col_idx in section["data"]
                 }
                 for tablename, tabledata in bp.data.items()
             }
             for table in self.datatypes.values():
-                table['id'] = 'int'
+                table["id"] = "int"
 
         with connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -1215,13 +1217,13 @@ class ROTKXIGUI(QMainWindow):
                 col_names = [x[0] for x in cursor.description]
                 table_data = [list(x) for x in cursor.fetchall()]
                 self.table_datas[table_name] = {}
-                self.table_datas[table_name]['data'] = table_data
-                self.table_datas[table_name]['col_names'] = col_names
-                self.table_datas[table_name]['num_rows'] = len(table_data)
+                self.table_datas[table_name]["data"] = table_data
+                self.table_datas[table_name]["col_names"] = col_names
+                self.table_datas[table_name]["num_rows"] = len(table_data)
 
             # Initialise table widgets``
             for table_name in table_names:
-                if table_name == 'sqlite_sequence':
+                if table_name == "sqlite_sequence":
                     continue
                 self.init_table_widget(table_name)
 
@@ -1232,14 +1234,14 @@ class ROTKXIGUI(QMainWindow):
     def save_file(self):
         """
         Saves the current state of the database to the scenario file.
-        Will first prompt for the path to save to if it doesn't exist yet
+        Will first prompt for the path to save to if it doesn"t exist yet
         """
 
         if not self.new_scen_path:
             self.save_as_file()
             return
 
-        total = sum([len(table_data['col_names'])
+        total = sum([len(table_data["col_names"])
                     for table_data in self.table_datas.values()])
 
         progress_dialog = QProgressDialog(
@@ -1280,12 +1282,12 @@ class ROTKXIGUI(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     app.setStyleSheet(qdarkstyle.load_stylesheet(
-        qt_api='pyqt5', palette=qdarkstyle.DarkPalette))
+        qt_api="pyqt5", palette=qdarkstyle.DarkPalette))
     gui = ROTKXIGUI()
     gui.show()
     sys.exit(app.exec_())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)  # TODO: Deleteme
     main()
