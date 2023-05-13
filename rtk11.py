@@ -1,5 +1,4 @@
 import os
-from pprint import pprint
 import shutil
 import signal
 import sys
@@ -11,6 +10,7 @@ import qdarkstyle
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import QWidget
 
 from binary_parser.binary_parser import BinaryParser
 from constants import *
@@ -291,26 +291,20 @@ class ROTKXIGUI(QMainWindow):
         self.tab_widget.addTab(table_widget, table_name)
         self.table_widgets.append(table_widget)
 
-    def make_confirmation_buttons(self, dialog: QDialog):
-        buttons_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(lambda: dialog.accept())
-        cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(lambda: dialog.reject())
-        buttons_layout.addWidget(ok_button)
-        buttons_layout.addWidget(cancel_button)
-        return buttons_layout
-
     def set_table_data(self, table_name: str, row_idx: int, col_idx: int, cell_data: str | int):
         """Sets the data of the internal table.
         """
-        print((table_name, row_idx, col_idx, cell_data))
+        if self.is_initialized:
+            print("SET", (table_name, row_idx, col_idx, cell_data))
         self.table_datas[table_name]["data"][row_idx][col_idx] = cell_data
 
     def get_table_data(self, table_name: str, row_idx: int, col_idx: int) -> str | int:
         """Retrieves data from the internal table.
         """
-        return self.table_datas[table_name]["data"][row_idx][col_idx]
+        table_data = self.table_datas[table_name]["data"][row_idx][col_idx]
+        if self.is_initialized:
+            print("GET", (table_name, row_idx, col_idx, table_data))
+        return table_data
 
     def get_column_name(self, table_name: str, col_idx: int) -> str:
         """Returns the name of a column in a table given its index.
@@ -554,19 +548,30 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "month":
             self.set_table_data("scenario", 0, Scenario.INGAMEMONTH, cell_data)
 
-    def get_force_ruler_options(self) -> list[str]:
+    def get_force_ruler_options(self, include_none=True) -> list[str]:
         """Returns the list of all force rulers.
         """
         ruler_ids = self.get_values_by_enum(Force.RULER)
-        officer_names = self.officer_names()
-        return sorted([officer for officer in officer_names if officer_names.index(officer) in ruler_ids]) + ["None"]
+        ruler_options = sorted([
+            self.get_officer_name_by_id(ruler_id)
+            for ruler_id in ruler_ids
+            if ruler_id != 0xFFFF])
+        if include_none:
+            ruler_options += ["None"]
+        return ruler_options
 
-    def get_district_ruler_options(self) -> list[str]:
+    def get_district_ruler_options(self, include_none=True) -> list[str]:
         """Returns the list of all district rulers for city and gates/ports ownership.
         """
         ruler_ids = self.get_values_by_enum(District.RULER)
         officer_names = self.officer_names()
-        return sorted([officer for officer in officer_names if officer_names.index(officer) in ruler_ids]) + ["None"]
+        ruler_options = sorted([
+            officer
+            for officer in officer_names
+            if officer_names.index(officer) in ruler_ids])
+        if include_none:
+            ruler_options += ["None"]
+        return ruler_options
 
     def get_officer_options(self) -> list[str]:
         """Returns the sorted list of options for officers, ending on "None".
@@ -641,14 +646,8 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "research":
             self.set_research(data_idx)
             return
-        elif col_name == "goal":
-            self.set_force_goal(data_idx)
-            return
-        elif col_name == "target":
-            self.set_district_goal(data_idx)
-            return
-        elif col_name == "specifictarget":
-            self.set_specific_goal(data_idx)
+        elif col_name in ["goal", "target",  "specifictarget"]:
+            self.set_behaviour_targets(data_idx, col_name)
             return
         elif "growth" in col_name:
             options = growth_ability_map.values()
@@ -683,19 +682,24 @@ class ROTKXIGUI(QMainWindow):
         if ok and item and item in options:
             cell_item.setText(item)
 
-    def make_unique_shared_parent_value(self, parent: int):
-        # NOTE: Could theoretically overflow
-        used_values = [
-            value
-            for value in self.get_values_by_enum(parent)
-            if value >= 850 and value != 0xFFFF]
-        n = 2000
-        while True:
-            if used_values.count(n) == 0:
-                return n
-            n += 1
+    def get_values_by_enum(self, enum_value):
+        """Returns all values in the table for a column given an enum value representing that column.
+        """
+        return [row[enum_value] for row in self.table_datas[enum_value.__class__.__name__.lower()]["data"]]
 
     def set_parents(self, editing_officer_id: int, col_name: str):
+        def make_unique_shared_parent_value(parent: int):
+            # NOTE: Could theoretically overflow
+            used_values = [
+                value
+                for value in self.get_values_by_enum(parent)
+                if value >= 850 and value != 0xFFFF]
+            n = 2000
+            while True:
+                if used_values.count(n) == 0:
+                    return n
+                n += 1
+
         current_tab = self.tab_widget.currentIndex()
         current_table = self.table_widgets[current_tab]
         current_table.itemChanged.disconnect(self.on_cell_update)
@@ -717,7 +721,7 @@ class ROTKXIGUI(QMainWindow):
 
         if parent_value < 850 or parent_value == 0xFFFF:
             # We make a new available unique parent value
-            parent_value = self.make_unique_shared_parent_value(parent_sex)
+            parent_value = make_unique_shared_parent_value(parent_sex)
             shared_parent_ids = [editing_officer_id]
         else:
             shared_parent_ids = [
@@ -801,273 +805,180 @@ class ROTKXIGUI(QMainWindow):
 
         current_table.itemChanged.connect(self.on_cell_update)
 
-    def get_values_by_enum(self, enum_value):
-        """Returns all values in the table for a column given an enum value representing that column.
-        """
-        return [row[enum_value] for row in self.table_datas[enum_value.__class__.__name__.lower()]["data"]]
-
-    def parse_goal_value(self, goal_value: int):
-        target = (goal_value >> 8) & 0xFF
-        aspiration = goal_value & 0xFF
-        return aspiration, target
-
-    def create_goal_value(self, aspiration: int, target: int):
-        return ((target & 0xFF) << 8) | (aspiration & 0xFF)
-
-    def set_force_goal(self, editing_force_id: int):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Set Aspiration and Target")
-
-        aspiration_combo = QComboBox()
-        target_combo = QComboBox()
-        target_combo.setEditable(True)
-
-        aspiration_combo.addItems(aspiration_map.values())
-
-        aspiration_label = QLabel("Aspiration:")
-        target_label = QLabel("Target:")
-
-        layout = QVBoxLayout()
-        aspiration_layout = QHBoxLayout()
-        target_layout = QHBoxLayout()
-
-        aspiration_layout.addWidget(aspiration_label)
-        aspiration_layout.addWidget(aspiration_combo)
-
-        target_layout.addWidget(target_label)
-        target_layout.addWidget(target_combo)
-
-        buttons_layout = self.make_confirmation_buttons(dialog)
-
-        layout.addLayout(aspiration_layout)
-        layout.addLayout(target_layout)
-        layout.addLayout(buttons_layout)
-
-        dialog.setLayout(layout)
-
-        def set_aspiration():
-            aspiration_text = aspiration_combo.currentText()
-            target_combo.clear()
-            target_combo.setEnabled(True)
-            if aspiration_text == "Conquer Region":
-                targets = conquer_region_map.values()
-            elif aspiration_text == "Conquer Province":
-                targets = conquer_province_map.values()
-            else:
-                target_combo.setDisabled(True)
-                return
-            target_combo.addItems(targets)
-
-        goal_value = self.get_table_data("force", editing_force_id, Force.GOAL)
-        aspiration_value, target_value = self.parse_goal_value(goal_value)
-
-        aspiration_combo.currentIndexChanged.connect(set_aspiration)
-        aspiration_combo.setCurrentText(aspiration_map[aspiration_value])
-
-        if aspiration_value == 0x01:
-            target_combo.setCurrentText(conquer_region_map[target_value])
-        elif aspiration_value == 0x02:
-            target_combo.setCurrentText(conquer_province_map[target_value])
-
-        if dialog.exec_() != QDialog.Accepted:
-            return
-
-        target_text = target_combo.currentText()
-        aspiration_text = aspiration_combo.currentText()
-        aspiration_value = reverse(aspiration_map)[aspiration_text]
-
-        if aspiration_value == 0x01:
-            target_value = reverse(conquer_region_map)[target_text]
-        elif aspiration_value == 0x02:
-            target_value = reverse(conquer_province_map)[target_text]
-        else:
-            target_value = 0xFF
-
-        new_goal_value = self.create_goal_value(aspiration_value, target_value)
-        self.set_table_data(
-            "force", editing_force_id, Force.GOAL, new_goal_value)
-
-    def set_district_goal(self, editing_district_id: int):
+    def set_behaviour_targets(self, row_idx: int, col_name: str):
         dialog = QDialog(self)
         dialog.setWindowTitle("Set District Behaviour and Target")
-
-        behaviour_combo = QComboBox()
-        target_combo = QComboBox()
-        target_combo.setEditable(True)
-
-        behaviour_combo.addItems(district_behaviour_map.values())
-
-        behaviour_label = QLabel("Behaviour:")
-        target_label = QLabel("Target:")
-
         layout = QVBoxLayout()
         behaviour_layout = QHBoxLayout()
+        behaviour_label = QLabel("Behaviour:")
+        behaviour_combo = QComboBox()
         target_layout = QHBoxLayout()
+        target_label = QLabel("Target:")
+        target_combo = QComboBox()
 
-        behaviour_layout.addWidget(behaviour_label)
-        behaviour_layout.addWidget(behaviour_combo)
+        def parse_goal_value(goal_value: int):
+            target = (goal_value >> 8) & 0xFF
+            behaviour = goal_value & 0xFF
+            return behaviour, target
 
-        target_layout.addWidget(target_label)
-        target_layout.addWidget(target_combo)
+        def create_goal_value(behaviour: int, target: int):
+            return ((target & 0xFF) << 8) | (behaviour & 0xFF)
 
-        buttons_layout = self.make_confirmation_buttons(dialog)
+        if col_name == "goal":
+            column_map = force_behaviour_map
+            tablename = "force"
+            col_idx = Force.GOAL
+        elif col_name == "target":
+            column_map = district_behaviour_map
+            tablename = "district"
+            col_idx = District.TARGET
+        elif col_name == "specifictarget":
+            column_map = specific_behaviour_map
+            tablename = "district"
+            col_idx = District.SPECIFICTARGET
 
-        layout.addLayout(behaviour_layout)
-        layout.addLayout(target_layout)
-        layout.addLayout(buttons_layout)
+        goal_value = self.get_table_data(tablename, row_idx, col_idx)
+        behaviour_value, target_value = parse_goal_value(goal_value)
 
-        dialog.setLayout(layout)
-
-        def set_behaviour():
+        def update_target_combo():
             behaviour_text = behaviour_combo.currentText()
             target_combo.clear()
             target_combo.setEnabled(True)
-            if behaviour_text == "Destroy Force":
-                targets = self.get_force_ruler_options()
-            elif behaviour_text == "Conquer Region":
-                targets = conquer_region_map.values()
-            elif behaviour_text == "Conquer Province":
-                targets = conquer_province_map.values()
-            elif behaviour_text == "Conquer City/Gate/Port":
-                targets = city_map.values()
-            else:
-                target_combo.setDisabled(True)
-                return
+            target_combo.setEditable(True)
+
+            if col_name == "goal":
+                if behaviour_text == "Conquer Region":
+                    targets = conquer_region_map.values()
+                elif behaviour_text == "Conquer Province":
+                    targets = conquer_province_map.values()
+                else:
+                    targets = []
+                    target_combo.setEnabled(False)
+            elif col_name == "target":
+                if behaviour_text == "Destroy Force":
+                    targets = self.get_force_ruler_options(include_none=False)
+                elif behaviour_text == "Conquer Region":
+                    targets = conquer_region_map.values()
+                elif behaviour_text == "Conquer Province":
+                    targets = conquer_province_map.values()
+                elif behaviour_text == "Conquer City/Gate/Port":
+                    targets = city_map.values()
+                else:
+                    targets = []
+                    target_combo.setEnabled(False)
+            elif col_name == "specifictarget":
+                if behaviour_text == "Conquer City":
+                    targets = city_map.values()
+                elif behaviour_text == "Diplomacy":
+                    targets = self.get_force_ruler_options(include_none=False)
+                else:
+                    targets = []
+                    target_combo.setEnabled(False)
+
             target_combo.addItems(targets)
 
-        goal_value = self.get_table_data(
-            "district", editing_district_id, District.TARGET)
-        behaviour_value, target_value = self.parse_goal_value(goal_value)
+        if col_name == "goal":
+            if behaviour_value == 0x01:
+                target_text = conquer_region_map[target_value]
+            elif behaviour_value == 0x02:
+                target_text = conquer_province_map[target_value]
+            else:
+                target_text = "None"
+        elif col_name == "target":
+            if behaviour_value == 0x00:
+                target_text = self.get_force_ruler_name_by_id(target_value)
+            elif behaviour_value == 0x01:
+                target_text = conquer_region_map[target_value]
+            elif behaviour_value == 0x02:
+                target_text = conquer_province_map[target_value]
+            elif behaviour_value == 0x03:
+                target_text = city_map[target_value]
+            else:
+                target_text = "None"
+        elif col_name == "specifictarget":
+            if behaviour_value == 0x03:
+                target_text = city_map[target_value]
+            elif behaviour_value == 0x04:
+                target_text = self.get_force_ruler_name_by_id(target_value)
+            else:
+                target_text = "None"
 
-        behaviour_combo.currentIndexChanged.connect(set_behaviour)
-        behaviour_combo.setCurrentText(district_behaviour_map[behaviour_value])
+        behaviour_layout.addWidget(behaviour_label)
+        behaviour_combo.addItems(column_map.values())
+        behaviour_combo.setCurrentText(column_map[behaviour_value])
+        behaviour_combo.currentIndexChanged.connect(update_target_combo)
+        behaviour_layout.addWidget(behaviour_combo)
+        layout.addLayout(behaviour_layout)
 
-        if behaviour_value == 0x00:
-            target_text = self.get_force_ruler_name_by_id(target_value)
-            target_combo.setCurrentText(target_text)
-        elif behaviour_value == 0x01:
-            target_combo.setCurrentText(conquer_region_map[target_value])
-        elif behaviour_value == 0x02:
-            target_combo.setCurrentText(conquer_province_map[target_value])
-        elif behaviour_value == 0x03:
-            target_combo.setCurrentText(city_map[target_value])
+        target_layout.addWidget(target_label)
+        target_combo.setCurrentText(target_text)
+        update_target_combo()
+        target_layout.addWidget(target_combo)
+        layout.addLayout(target_layout)
+
+        buttons_layout = self.make_confirmation_buttons(dialog)
+        layout.addLayout(buttons_layout)
+
+        dialog.setLayout(layout)
 
         if dialog.exec_() != QDialog.Accepted:
             return
 
         target_text = target_combo.currentText()
         behaviour_text = behaviour_combo.currentText()
-        behaviour_value = reverse(district_behaviour_map)[behaviour_text]
+        new_behaviour_value = reverse(column_map)[behaviour_text]
 
-        if behaviour_value == 0x00:
-            target_value = self.get_force_ruler_options().index(target_text)
-        elif behaviour_value == 0x01:
-            target_value = reverse(conquer_region_map)[target_text]
-        elif behaviour_value == 0x02:
-            target_value = reverse(conquer_province_map)[target_text]
-        elif behaviour_value == 0x03:
-            target_value = reverse(city_map)[target_text]
-        else:
-            target_value = 0xFF
-
-        new_goal_value = self.create_goal_value(behaviour_value, target_value)
-        self.set_table_data(
-            "district", editing_district_id, District.TARGET, new_goal_value)
-
-    def set_specific_goal(self, editing_district_id: int):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Set District Behaviour and Target")
-
-        behaviour_combo = QComboBox()
-        target_combo = QComboBox()
-        target_combo.setEditable(True)
-
-        behaviour_combo.addItems(specific_behaviour_map.values())
-
-        behaviour_label = QLabel("Behaviour:")
-        target_label = QLabel("Target:")
-
-        layout = QVBoxLayout()
-        behaviour_layout = QHBoxLayout()
-        target_layout = QHBoxLayout()
-
-        behaviour_layout.addWidget(behaviour_label)
-        behaviour_layout.addWidget(behaviour_combo)
-
-        target_layout.addWidget(target_label)
-        target_layout.addWidget(target_combo)
-
-        buttons_layout = self.make_confirmation_buttons(dialog)
-
-        layout.addLayout(behaviour_layout)
-        layout.addLayout(target_layout)
-        layout.addLayout(buttons_layout)
-
-        dialog.setLayout(layout)
-
-        def set_behaviour():
-            behaviour_text = behaviour_combo.currentText()
-            target_combo.clear()
-            target_combo.setEnabled(True)
-            if behaviour_text == "Conquer City":
-                targets = city_map.values()
-            elif behaviour_text == "Diplomacy":
-                targets = self.get_force_ruler_options()
+        if col_name == "goal":
+            if new_behaviour_value == 0x01:
+                new_target_value = reverse(conquer_region_map)[target_text]
+            elif new_behaviour_value == 0x02:
+                new_target_value = reverse(conquer_province_map)[target_text]
             else:
-                target_combo.setDisabled(True)
-                return
-            target_combo.addItems(targets)
+                new_target_value = 0xFF
+        elif col_name == "target":
+            if new_behaviour_value == 0x00:
+                new_target_value = self.get_force_id_by_force_ruler_name(
+                    target_text)
+            elif new_behaviour_value == 0x01:
+                new_target_value = reverse(conquer_region_map)[target_text]
+            elif new_behaviour_value == 0x02:
+                new_target_value = reverse(conquer_province_map)[target_text]
+            elif new_behaviour_value == 0x03:
+                new_target_value = reverse(city_map)[target_text]
+            else:
+                new_target_value = 0xFF
+        elif col_name == "specifictarget":
+            if new_behaviour_value == 0x03:
+                new_target_value = reverse(city_map)[target_text]
+            elif new_behaviour_value == 0x04:
+                new_target_value = self.get_force_id_by_force_ruler_name(
+                    target_text)
+            else:
+                new_target_value = 0xFF
 
-        goal_value = self.get_table_data(
-            "district", editing_district_id, District.SPECIFICTARGET)
-        behaviour_value, target_value = self.parse_goal_value(goal_value)
-
-        behaviour_combo.currentIndexChanged.connect(set_behaviour)
-        behaviour_combo.setCurrentText(district_behaviour_map[behaviour_value])
-
-        if behaviour_value == 0x03:
-            target_combo.setCurrentText(city_map[target_value])
-        elif behaviour_value == 0x04:
-            target_text = self.get_force_ruler_name_by_id(target_value)
-            target_combo.setCurrentText(target_text)
-
-        if dialog.exec_() != QDialog.Accepted:
-            return
-
-        target_text = target_combo.currentText()
-        behaviour_text = behaviour_combo.currentText()
-        behaviour_value = reverse(district_behaviour_map)[behaviour_text]
-
-        if behaviour_value == 0x03:
-            target_value = reverse(city_map)[target_text]
-        elif behaviour_value == 0x04:
-            target_value = self.get_force_ruler_options().index(target_text)
-        else:
-            target_value = 0xFF
-
-        new_goal_value = self.create_goal_value(behaviour_value, target_value)
-        self.set_table_data(
-            "district", editing_district_id, District.SPECIFICTARGET, new_goal_value)
-
-    def parse_research_value(self, research_value: int):
-        """Parses the research value and returns the individual levels for each research tree.
-        """
-        return [(research_value >> (28-i*4)) & 0x0F for i in range(8)]
-
-    def create_research_value(self, research_levels: list[int]):
-        """Given a list of the individual research levels, returns the summed research value
-        """
-        return sum(research_level_values[level] << (28-i*4) for i, level in enumerate(research_levels))
+        new_goal_value = create_goal_value(
+            new_behaviour_value, new_target_value)
+        self.set_table_data(tablename, row_idx, col_idx, new_goal_value)
 
     def set_research(self, editing_force_id: int):
         """Opens a dialogue box with sliders for each individual research level.
         """
+
+        def parse_research_value(research_value: int):
+            return [(research_value >> (28-i*4)) & 0x0F for i in range(8)]
+
+        def create_research_value(research_levels: list[int]):
+            return sum(research_level_values[level] << (28-i*4) for i, level in enumerate(research_levels))
+
+        def on_slider_value_changed(value, slider_value_label=slider_value_label):
+            slider_value_label.setText(str(value))
+
         dialog = QDialog(self)
         dialog.setWindowTitle("Research Levels")
 
         research_value = self.get_table_data(
             "force", editing_force_id, Force.RESEARCH)
-        research_levels = self.parse_research_value(research_value)
+        research_levels = parse_research_value(research_value)
 
         sliders_layout = QGridLayout()
         sliders = []
@@ -1088,9 +999,6 @@ class ROTKXIGUI(QMainWindow):
             sliders_layout.addWidget(slider_value_label, i, 2)
             sliders.append(slider)
 
-            def on_slider_value_changed(value, slider_value_label=slider_value_label):
-                slider_value_label.setText(str(value))
-
             slider.valueChanged.connect(on_slider_value_changed)
 
         buttons_layout = self.make_confirmation_buttons(dialog)
@@ -1105,27 +1013,24 @@ class ROTKXIGUI(QMainWindow):
             return
 
         new_research_levels = [slider.value() for slider in sliders]
-        new_research_value = self.create_research_value(
-            new_research_levels)
+        new_research_value = create_research_value(new_research_levels)
         self.set_table_data(
             "force", editing_force_id, Force.RESEARCH, new_research_value)
-
-    def create_alliance_value(self, force_ids: list[int], exclude_force_id: int):
-        """Creates an alliance value for a given list of force numbers, excluding the specified force ID."""
-        return reduce(
-            lambda x, y: x | (1 << y)
-            if y != exclude_force_id
-            else x, force_ids, 0
-        )
-
-    def parse_alliance_value(self, alliance_value: int):
-        """Parses an alliance value and returns the list of participating forces.
-        """
-        return [i for i in range(self.get_num_rows("force")) if alliance_value & (1 << i)]
 
     def set_alliance(self, editing_force_id: int):
         """Opens a dialogue box with checkboxes for all rulers to create alliances between them.
         """
+
+        def create_alliance_value(force_ids: list[int], exclude_force_id: int):
+            return reduce(
+                lambda x, y: x | (1 << y)
+                if y != exclude_force_id
+                else x, force_ids, 0
+            )
+
+        def parse_alliance_value(alliance_value: int):
+            return [i for i in range(self.get_num_rows("force")) if alliance_value & (1 << i)]
+
         dialog = QDialog(self)
         dialog.setWindowTitle("Alliances")
 
@@ -1136,7 +1041,7 @@ class ROTKXIGUI(QMainWindow):
 
         alliance_value = self.get_table_data(
             "force", editing_force_id, Force.ALLIANCE)
-        force_ids = self.parse_alliance_value(alliance_value)
+        force_ids = parse_alliance_value(alliance_value)
         alliance_values = self.get_values_by_enum(Force.ALLIANCE)
         force_rulers = self.get_values_by_enum(Force.RULER)
 
@@ -1188,7 +1093,7 @@ class ROTKXIGUI(QMainWindow):
 
         for force_id, alliance_value in enumerate(alliance_values):
             # Create the new alliance value, excluding the current force_id
-            new_alliance_value = self.create_alliance_value(checked, force_id)
+            new_alliance_value = create_alliance_value(checked, force_id)
             if force_id in checked:
                 # This force takes part in the alliance
                 self.set_table_data(
@@ -1197,6 +1102,16 @@ class ROTKXIGUI(QMainWindow):
                 # We turn off the bits in the new alliance value for this force"s alliance in this case.
                 self.set_table_data(
                     "force", force_id, Force.ALLIANCE, alliance_value & ~new_alliance_value)
+
+    def make_confirmation_buttons(self, dialog: QDialog):
+        buttons_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(lambda: dialog.accept())
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(lambda: dialog.reject())
+        buttons_layout.addWidget(ok_button)
+        buttons_layout.addWidget(cancel_button)
+        return buttons_layout
 
     def sort_table(self, col_idx: int):
         """Sorts the table in ascending/descending order on a given column.

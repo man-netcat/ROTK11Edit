@@ -588,7 +588,7 @@ conquer_province_map = {
     0x0B: "Nanzhong (Jianning, Yunnan)",
 }
 
-aspiration_map = {
+force_behaviour_map = {
     0x00: "Conquer China",
     0x01: "Conquer Region",
     0x02: "Conquer Province",
