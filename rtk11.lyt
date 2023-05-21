@@ -183,7 +183,7 @@ end
 
 begin
 district 0x27FD7 8 42
-    position int 1
+    force int 1
     number int 1
     ruler int 2
     target int 2

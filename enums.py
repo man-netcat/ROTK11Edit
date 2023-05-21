@@ -204,7 +204,7 @@ class District(Enum):
 
 class City(Enum):
     ID = 0
-    FORCE = 1
+    DISTRICT = 1
     MAXTROOPS = 2
     TROOPS = 3
     GOLD = 4
@@ -231,7 +231,7 @@ class City(Enum):
 
 class Gate_port(Enum):
     ID = 0
-    FORCE = 1
+    DISTRICT = 1
     TROOPS = 2
     GOLD = 3
     FOOD = 4

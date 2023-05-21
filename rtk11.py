@@ -237,6 +237,8 @@ class ROTKXIGUI(QMainWindow):
             cell_text = "Edit"
         elif col_name in ["allegiance", "district"]:
             cell_text = self.get_district_ruler_by_district_id(cell_data)
+        elif col_name in ["force"]:
+            cell_text = self.get_force_ruler_name_by_id(cell_data)
         elif "growth" in col_name:
             cell_text = growth_ability_map[cell_data]
         elif col_name in officer_columns:
@@ -302,8 +304,8 @@ class ROTKXIGUI(QMainWindow):
         """Retrieves data from the internal table.
         """
         table_data = self.table_datas[table_name]["data"][row_idx][col_idx]
-        if self.is_initialized:
-            print("GET", (table_name, row_idx, col_idx, table_data))
+        # if self.is_initialized:
+        #     print("GET", (table_name, row_idx, col_idx, table_data))
         return table_data
 
     def get_column_name(self, table_name: str, col_idx: int) -> str:
@@ -513,12 +515,15 @@ class ROTKXIGUI(QMainWindow):
         col_name = self.get_column_name(table_name, col_idx)
         cell_text = cell_item.text()
 
-        if col_name in ["alliance", "research", "goal", "target"]:
+        if col_name in ["alliance", "research", "goal", "target", "specifictarget"]:
+            # This is managed by on_cell_selected
             return
         elif col_name == "specialty":
             cell_data = self.get_specialty_value_from_text(cell_text)
         elif col_name in ["allegiance", "district"]:
             cell_data = self.get_district_id_by_district_ruler_name(cell_text)
+        elif col_name in ["force"]:
+            cell_data = self.get_force_id_by_force_ruler_name(cell_text)
         elif "growth" in col_name:
             cell_data = reverse(growth_ability_map)[cell_text]
         elif col_name in officer_columns:
@@ -588,6 +593,19 @@ class ROTKXIGUI(QMainWindow):
             for officer_name, officer_sex in zip(officer_names, officer_sexes)
             if officer_sex == sex])
 
+    def get_officer_names_by_allegiance(self, district_idx) -> list[str]:
+        """Returns a list of officers for the given allegiance
+        """
+        ruler_id = self.get_table_data(
+            'district', district_idx, District.RULER)
+        self.get_district_ruler_options()
+        officer_names = self.officer_names()
+        officer_allegiancees = self.get_values_by_enum(Officer.ALLEGIANCE)
+        return sorted([
+            officer_name
+            for officer_name, officer_allegiance in zip(officer_names, officer_allegiancees)
+            if officer_allegiance == ruler_id])
+
     def get_country_options(self) -> list[str]:
         """Returns the sorted list of options for countries, ending on "None".
         """
@@ -655,6 +673,8 @@ class ROTKXIGUI(QMainWindow):
             options = specialty_options.values()
         elif col_name == "force":
             options = self.get_force_ruler_options()
+        elif col_name == "ruler":
+            options = self.get_officer_names_by_allegiance(data_idx)
         elif col_name in ["allegiance", "district"]:
             options = self.get_district_ruler_options()
         elif col_name in officer_columns:
@@ -824,18 +844,11 @@ class ROTKXIGUI(QMainWindow):
         def create_goal_value(behaviour: int, target: int):
             return ((target & 0xFF) << 8) | (behaviour & 0xFF)
 
-        if col_name == "goal":
-            column_map = force_behaviour_map
-            tablename = "force"
-            col_idx = Force.GOAL
-        elif col_name == "target":
-            column_map = district_behaviour_map
-            tablename = "district"
-            col_idx = District.TARGET
-        elif col_name == "specifictarget":
-            column_map = specific_behaviour_map
-            tablename = "district"
-            col_idx = District.SPECIFICTARGET
+        column_map, tablename, col_idx = {
+            "goal": (force_behaviour_map, "force", Force.GOAL),
+            "target": (district_behaviour_map, "district", District.TARGET),
+            "specifictarget": (specific_behaviour_map, "district", District.SPECIFICTARGET)
+        }[col_name]
 
         goal_value = self.get_table_data(tablename, row_idx, col_idx)
         behaviour_value, target_value = parse_goal_value(goal_value)
@@ -843,65 +856,31 @@ class ROTKXIGUI(QMainWindow):
         def update_target_combo():
             behaviour_text = behaviour_combo.currentText()
             target_combo.clear()
-            target_combo.setEnabled(True)
-            target_combo.setEditable(True)
 
-            if col_name == "goal":
-                if behaviour_text == "Conquer Region":
-                    targets = conquer_region_map.values()
-                elif behaviour_text == "Conquer Province":
-                    targets = conquer_province_map.values()
-                else:
-                    targets = []
-                    target_combo.setEnabled(False)
-            elif col_name == "target":
-                if behaviour_text == "Destroy Force":
-                    targets = self.get_force_ruler_options(include_none=False)
-                elif behaviour_text == "Conquer Region":
-                    targets = conquer_region_map.values()
-                elif behaviour_text == "Conquer Province":
-                    targets = conquer_province_map.values()
-                elif behaviour_text == "Conquer City/Gate/Port":
-                    targets = city_map.values()
-                else:
-                    targets = []
-                    target_combo.setEnabled(False)
-            elif col_name == "specifictarget":
-                if behaviour_text == "Conquer City":
-                    targets = city_map.values()
-                elif behaviour_text == "Diplomacy":
-                    targets = self.get_force_ruler_options(include_none=False)
-                else:
-                    targets = []
-                    target_combo.setEnabled(False)
+            targets = defaultdict(lambda: lambda: [], {
+                ("goal", "Conquer Region"): conquer_region_map.values,
+                ("goal", "Conquer Province"): conquer_province_map.values,
+                ("target", "Destroy Force"): lambda: self.get_force_ruler_options(include_none=False),
+                ("target", "Conquer Region"): conquer_region_map.values,
+                ("target", "Conquer Province"): conquer_province_map.values,
+                ("target", "Conquer City/Gate/Port"): city_map.values,
+                ("specifictarget", "Conquer City"): city_map.values,
+                ("specifictarget", "Diplomacy"): lambda: self.get_force_ruler_options(include_none=False)
+            })[(col_name, behaviour_text)]()
 
+            target_combo.setEnabled(bool(targets))
             target_combo.addItems(targets)
 
-        if col_name == "goal":
-            if behaviour_value == 0x01:
-                target_text = conquer_region_map[target_value]
-            elif behaviour_value == 0x02:
-                target_text = conquer_province_map[target_value]
-            else:
-                target_text = "None"
-        elif col_name == "target":
-            if behaviour_value == 0x00:
-                target_text = self.get_force_ruler_name_by_id(target_value)
-            elif behaviour_value == 0x01:
-                target_text = conquer_region_map[target_value]
-            elif behaviour_value == 0x02:
-                target_text = conquer_province_map[target_value]
-            elif behaviour_value == 0x03:
-                target_text = city_map[target_value]
-            else:
-                target_text = "None"
-        elif col_name == "specifictarget":
-            if behaviour_value == 0x03:
-                target_text = city_map[target_value]
-            elif behaviour_value == 0x04:
-                target_text = self.get_force_ruler_name_by_id(target_value)
-            else:
-                target_text = "None"
+        target_text = defaultdict(lambda: lambda _: "", {
+            ("goal", 0x01): lambda target_value: conquer_region_map[target_value],
+            ("goal", 0x02): lambda target_value: conquer_province_map[target_value],
+            ("target", 0x00): self.get_force_ruler_name_by_id,
+            ("target", 0x01): lambda target_value: conquer_region_map[target_value],
+            ("target", 0x02): lambda target_value: conquer_province_map[target_value],
+            ("target", 0x03): lambda target_value: city_map[target_value],
+            ("specifictarget", 0x03): lambda target_value: city_map[target_value],
+            ("specifictarget", 0x04): self.get_force_ruler_name_by_id
+        })[(col_name, behaviour_value)](target_value)
 
         behaviour_layout.addWidget(behaviour_label)
         behaviour_combo.addItems(column_map.values())
@@ -911,8 +890,8 @@ class ROTKXIGUI(QMainWindow):
         layout.addLayout(behaviour_layout)
 
         target_layout.addWidget(target_label)
-        target_combo.setCurrentText(target_text)
         update_target_combo()
+        target_combo.setCurrentText(target_text)
         target_layout.addWidget(target_combo)
         layout.addLayout(target_layout)
 
@@ -928,33 +907,16 @@ class ROTKXIGUI(QMainWindow):
         behaviour_text = behaviour_combo.currentText()
         new_behaviour_value = reverse(column_map)[behaviour_text]
 
-        if col_name == "goal":
-            if new_behaviour_value == 0x01:
-                new_target_value = reverse(conquer_region_map)[target_text]
-            elif new_behaviour_value == 0x02:
-                new_target_value = reverse(conquer_province_map)[target_text]
-            else:
-                new_target_value = 0xFF
-        elif col_name == "target":
-            if new_behaviour_value == 0x00:
-                new_target_value = self.get_force_id_by_force_ruler_name(
-                    target_text)
-            elif new_behaviour_value == 0x01:
-                new_target_value = reverse(conquer_region_map)[target_text]
-            elif new_behaviour_value == 0x02:
-                new_target_value = reverse(conquer_province_map)[target_text]
-            elif new_behaviour_value == 0x03:
-                new_target_value = reverse(city_map)[target_text]
-            else:
-                new_target_value = 0xFF
-        elif col_name == "specifictarget":
-            if new_behaviour_value == 0x03:
-                new_target_value = reverse(city_map)[target_text]
-            elif new_behaviour_value == 0x04:
-                new_target_value = self.get_force_id_by_force_ruler_name(
-                    target_text)
-            else:
-                new_target_value = 0xFF
+        new_target_value = defaultdict(lambda _: 0xFF, {
+            ("goal", 0x01): lambda target_text: reverse(conquer_region_map)[target_text],
+            ("goal", 0x02): lambda target_text: reverse(conquer_province_map)[target_text],
+            ("target", 0x00): self.get_force_id_by_force_ruler_name,
+            ("target", 0x01): lambda target_text: reverse(conquer_region_map)[target_text],
+            ("target", 0x02): lambda target_text: reverse(conquer_province_map)[target_text],
+            ("target", 0x03): lambda target_text: reverse(city_map)[target_text],
+            ("specifictarget", 0x03): lambda target_text: reverse(city_map)[target_text],
+            ("specifictarget", 0x04): self.get_force_id_by_force_ruler_name
+        })[(col_name, new_behaviour_value)](target_text)
 
         new_goal_value = create_goal_value(
             new_behaviour_value, new_target_value)
