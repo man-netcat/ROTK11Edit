@@ -33,7 +33,7 @@ class Force(Enum):
     ID = 0
     DIFFICULTY = 1
     DESCRIPTION = 2
-    RULER = 3
+    FORCERULER = 3
     STRATEGIST = 4
     RELATIONSHIP1 = 5
     RELATIONSHIP2 = 6
@@ -192,9 +192,9 @@ class Item(Enum):
 
 class District(Enum):
     ID = 0
-    POSITION = 1
+    FORCE = 1
     NUMBER = 2
-    RULER = 3
+    DISTRICTRULER = 3
     TARGET = 4
     SPECIFICTARGET = 5
 

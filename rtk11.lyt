@@ -123,7 +123,7 @@ end
 
 begin
 force 0x2735B 68 42
-    ruler int 2
+    forceruler int 2
     strategist int 2
     relationship1 int 1
     relationship2 int 1
@@ -185,7 +185,7 @@ begin
 district 0x27FD7 8 42
     force int 1
     number int 1
-    ruler int 2
+    districtruler int 2
     target int 2
     specifictarget int 2
 end

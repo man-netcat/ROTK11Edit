@@ -537,7 +537,8 @@ col_map = {
 
 officer_columns = [
     'strategist',
-    'ruler',
+    'forceruler',
+    'districtruler',
     'father',
     'mother',
     'spouse',

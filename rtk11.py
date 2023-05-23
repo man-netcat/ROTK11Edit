@@ -224,7 +224,6 @@ class ROTKXIGUI(QMainWindow):
         """
         cell_item = QTableWidgetItem()
         cell_item.setFlags(cell_item.flags() & ~Qt.ItemIsEditable)
-
         if col_name == "id":
             cell_text = int(cell_data)
         elif col_name == "colour":
@@ -237,8 +236,8 @@ class ROTKXIGUI(QMainWindow):
             cell_text = "Edit"
         elif col_name in ["allegiance", "district"]:
             cell_text = self.get_district_ruler_by_district_id(cell_data)
-        elif col_name in ["force"]:
-            cell_text = self.get_force_ruler_name_by_id(cell_data)
+        elif col_name == "force":
+            cell_text = self.get_force_ruler_name_by_force_id(cell_data)
         elif "growth" in col_name:
             cell_text = growth_ability_map[cell_data]
         elif col_name in officer_columns:
@@ -337,14 +336,14 @@ class ROTKXIGUI(QMainWindow):
         """
         return reverse(specialty_options)[text]
 
-    def get_force_ruler_name_by_id(self, force_id: int) -> str:
+    def get_force_ruler_name_by_force_id(self, force_id: int) -> str:
         """Return the name of the force ruler given a force id.
         """
         if force_id == 0xFF:
             return "None"
         elif force_id >= self.get_num_rows("force"):
             return tribes[force_id]
-        ruler_id = self.get_values_by_enum(Force.RULER)[force_id]
+        ruler_id = self.get_values_by_enum(Force.FORCERULER)[force_id]
         return self.get_officer_name_by_id(ruler_id)
 
     def get_force_id_by_force_ruler_name(self, ruler_name: str) -> int:
@@ -353,7 +352,7 @@ class ROTKXIGUI(QMainWindow):
         if ruler_name == "None":
             return 0xFF
         officer_id = self.officer_names().index(ruler_name)
-        return self.get_values_by_enum(Force.RULER).index(officer_id)
+        return self.get_values_by_enum(Force.FORCERULER).index(officer_id)
 
     def get_district_ruler_by_district_id(self, district_id: int) -> str:
         """Return the name of the district ruler given its district id.
@@ -362,7 +361,8 @@ class ROTKXIGUI(QMainWindow):
             return "None"
         elif district_id >= self.get_num_rows("force"):
             return tribes[district_id]
-        ruler_id = self.get_table_data("district", district_id, District.RULER)
+        ruler_id = self.get_table_data(
+            "district", district_id, District.DISTRICTRULER)
         return self.get_officer_name_by_id(ruler_id)
 
     def get_district_id_by_district_ruler_name(self, ruler_name: str) -> str:
@@ -371,7 +371,7 @@ class ROTKXIGUI(QMainWindow):
         if ruler_name == "None":
             return 0xFF
         ruler_id = self.get_officer_id_by_name(ruler_name)
-        return self.get_values_by_enum(District.RULER).index(ruler_id)
+        return self.get_values_by_enum(District.DISTRICTRULER).index(ruler_id)
 
     def get_officer_name_by_id(self, officer_id: int) -> str:
         """Returns the name of an officer given its id.
@@ -522,7 +522,7 @@ class ROTKXIGUI(QMainWindow):
             cell_data = self.get_specialty_value_from_text(cell_text)
         elif col_name in ["allegiance", "district"]:
             cell_data = self.get_district_id_by_district_ruler_name(cell_text)
-        elif col_name in ["force"]:
+        elif col_name == "force":
             cell_data = self.get_force_id_by_force_ruler_name(cell_text)
         elif "growth" in col_name:
             cell_data = reverse(growth_ability_map)[cell_text]
@@ -556,7 +556,7 @@ class ROTKXIGUI(QMainWindow):
     def get_force_ruler_options(self, include_none=True) -> list[str]:
         """Returns the list of all force rulers.
         """
-        ruler_ids = self.get_values_by_enum(Force.RULER)
+        ruler_ids = self.get_values_by_enum(Force.FORCERULER)
         ruler_options = sorted([
             self.get_officer_name_by_id(ruler_id)
             for ruler_id in ruler_ids
@@ -568,7 +568,7 @@ class ROTKXIGUI(QMainWindow):
     def get_district_ruler_options(self, include_none=True) -> list[str]:
         """Returns the list of all district rulers for city and gates/ports ownership.
         """
-        ruler_ids = self.get_values_by_enum(District.RULER)
+        ruler_ids = self.get_values_by_enum(District.DISTRICTRULER)
         officer_names = self.officer_names()
         ruler_options = sorted([
             officer
@@ -594,17 +594,20 @@ class ROTKXIGUI(QMainWindow):
             if officer_sex == sex])
 
     def get_officer_names_by_allegiance(self, district_idx) -> list[str]:
-        """Returns a list of officers for the given allegiance
+        """Returns a list of officers for the given district idx
         """
-        ruler_id = self.get_table_data(
-            'district', district_idx, District.RULER)
-        self.get_district_ruler_options()
+        editing_ruler_id = self.get_table_data(
+            'district', district_idx, District.FORCE)
+        district_ruler_ids = [
+            force_id
+            for force_id, ruler_id in enumerate(self.get_values_by_enum(District.FORCE))
+            if ruler_id == editing_ruler_id]
         officer_names = self.officer_names()
         officer_allegiancees = self.get_values_by_enum(Officer.ALLEGIANCE)
         return sorted([
             officer_name
             for officer_name, officer_allegiance in zip(officer_names, officer_allegiancees)
-            if officer_allegiance == ruler_id])
+            if officer_allegiance in district_ruler_ids])
 
     def get_country_options(self) -> list[str]:
         """Returns the sorted list of options for countries, ending on "None".
@@ -673,7 +676,7 @@ class ROTKXIGUI(QMainWindow):
             options = specialty_options.values()
         elif col_name == "force":
             options = self.get_force_ruler_options()
-        elif col_name == "ruler":
+        elif col_name == "districtruler":
             options = self.get_officer_names_by_allegiance(data_idx)
         elif col_name in ["allegiance", "district"]:
             options = self.get_district_ruler_options()
@@ -855,7 +858,6 @@ class ROTKXIGUI(QMainWindow):
 
         def update_target_combo():
             behaviour_text = behaviour_combo.currentText()
-            target_combo.clear()
 
             targets = defaultdict(lambda: lambda: [], {
                 ("goal", "Conquer Region"): conquer_region_map.values,
@@ -868,18 +870,19 @@ class ROTKXIGUI(QMainWindow):
                 ("specifictarget", "Diplomacy"): lambda: self.get_force_ruler_options(include_none=False)
             })[(col_name, behaviour_text)]()
 
-            target_combo.setEnabled(bool(targets))
+            target_combo.clear()
             target_combo.addItems(targets)
+            target_combo.setEnabled(bool(targets))
 
         target_text = defaultdict(lambda: lambda _: "", {
             ("goal", 0x01): lambda target_value: conquer_region_map[target_value],
             ("goal", 0x02): lambda target_value: conquer_province_map[target_value],
-            ("target", 0x00): self.get_force_ruler_name_by_id,
+            ("target", 0x00): self.get_force_ruler_name_by_force_id,
             ("target", 0x01): lambda target_value: conquer_region_map[target_value],
             ("target", 0x02): lambda target_value: conquer_province_map[target_value],
             ("target", 0x03): lambda target_value: city_map[target_value],
             ("specifictarget", 0x03): lambda target_value: city_map[target_value],
-            ("specifictarget", 0x04): self.get_force_ruler_name_by_id
+            ("specifictarget", 0x04): self.get_force_ruler_name_by_force_id
         })[(col_name, behaviour_value)](target_value)
 
         behaviour_layout.addWidget(behaviour_label)
@@ -1005,7 +1008,7 @@ class ROTKXIGUI(QMainWindow):
             "force", editing_force_id, Force.ALLIANCE)
         force_ids = parse_alliance_value(alliance_value)
         alliance_values = self.get_values_by_enum(Force.ALLIANCE)
-        force_rulers = self.get_values_by_enum(Force.RULER)
+        force_rulers = self.get_values_by_enum(Force.FORCERULER)
 
         checkboxes: list[QCheckBox] = []
 
