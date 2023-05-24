@@ -596,18 +596,22 @@ class ROTKXIGUI(QMainWindow):
     def get_officer_names_by_allegiance(self, district_idx) -> list[str]:
         """Returns a list of officers for the given district idx
         """
-        editing_ruler_id = self.get_table_data(
+        # TODO: Fix
+        editing_force_ruler_id = self.get_table_data(
             'district', district_idx, District.FORCE)
-        district_ruler_ids = [
-            force_id
-            for force_id, ruler_id in enumerate(self.get_values_by_enum(District.FORCE))
-            if ruler_id == editing_ruler_id]
-        officer_names = self.officer_names()
-        officer_allegiancees = self.get_values_by_enum(Officer.ALLEGIANCE)
-        return sorted([
-            officer_name
-            for officer_name, officer_allegiance in zip(officer_names, officer_allegiancees)
-            if officer_allegiance in district_ruler_ids])
+        force_ruler_ids = self.get_values_by_enum(District.FORCE)
+        district_ruler_ids = self.get_values_by_enum(District.DISTRICTRULER)
+        force_district_ids = [
+            force_district_id
+            for force_district_id, force_ruler_id in enumerate(force_ruler_ids)
+            if force_ruler_id == editing_force_ruler_id]
+        officer_allegiances = self.get_values_by_enum(Officer.ALLEGIANCE)
+        available_ids = [
+            officer_id
+            for officer_id, officer_allegiance in enumerate(officer_allegiances)
+            if officer_allegiance in force_district_ids
+            and officer_id not in district_ruler_ids]
+        return sorted([self.get_officer_name_by_id(officer_id) for officer_id in available_ids])
 
     def get_country_options(self) -> list[str]:
         """Returns the sorted list of options for countries, ending on "None".
