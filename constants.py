@@ -1,20 +1,16 @@
-from collections import defaultdict
-
-
-def reverse(d): return {v: k for k, v in d.items()}
-
+from bidict import bidict
 
 # 0xFF = index 255 maps to white
-colour_map = {
+colour_map = bidict({
     0x00: 0x2828E8, 0x01: 0x387800, 0x02: 0xD00028, 0x03: 0x8C662A, 0x04: 0x200070, 0x05: 0x5A5A5A, 0x06: 0x20DEE0, 0x07: 0xDAD23A, 0x08: 0xF69CB2, 0x09: 0xA0D488,
     0x0A: 0x1E1E1E, 0x0B: 0xF26C20, 0x0C: 0xA286AC, 0x0D: 0x5C1646, 0x0E: 0x900018, 0x0F: 0x8AC832, 0x10: 0xC4447A, 0x11: 0x8692BA, 0x12: 0xC2E088, 0x13: 0x009A7A,
     0x14: 0x463A00, 0x15: 0x423A80, 0x16: 0x9C9C9C, 0x17: 0x746442, 0x18: 0x005490, 0x19: 0xAA2C50, 0x1A: 0xF25E52, 0x1B: 0xFFFA88, 0x1C: 0xF89820, 0x1D: 0xA89870,
     0x1E: 0x942C78, 0x1F: 0x780094, 0x20: 0x86461E, 0x21: 0x007150, 0x22: 0xF79A64, 0x23: 0x12495C, 0x24: 0x8A80AC, 0x25: 0x008FC4, 0x26: 0x00A63C, 0x27: 0xF03450,
     0x28: 0xDCB06C, 0x29: 0xFFF416, 0x2A: 0x80CA87, 0x2B: 0x8EECEC, 0x2C: 0x80A6CC, 0x2D: 0x006FA9, 0x2E: 0xB8700C, 0x2F: 0x6EB8A7, 0x30: 0x20E020, 0x31: 0xE020DE,
     0xFF: 0xFFFFFF
-}
+})
 
-city_map = {
+city_map = bidict({
     0x00: "Xiang Ping",
     0x01: "Bei Ping",
     0x02: "Ji",
@@ -102,11 +98,9 @@ city_map = {
     0x54: "Dong Tine",
     0x55: "Gong An",
     0x56: "Wu Xian",
-    0xFF: "None",
-    0xFFFF: "None",
-}
+})
 
-officer_status_map = {
+officer_status_map = bidict({
     0x00: "Sovereign",
     0x01: "Viceroy",
     0x02: "Prefect",
@@ -116,10 +110,9 @@ officer_status_map = {
     0x06: "Under aged",
     0x07: "Searchable",
     0x08: "Dead",
-    0xff: "None",
-}
+})
 
-officer_ranks_map = {
+officer_ranks_map = bidict({
     0x00: "Prime Minister",
     0x01: "Chief Minister",
     0x02: "Chief Officer",
@@ -201,10 +194,9 @@ officer_ranks_map = {
     0x4e: "Officer",
     0x4f: "Officer",
     0x50: "None",
-    0xFF: "None"
-}
+})
 
-growth_ability_map = {
+growth_ability_map = bidict({
     0x00: "Maintain + Long",
     0x01: "Maintain + Short",
     0x02: "Precocious + Short",
@@ -214,9 +206,9 @@ growth_ability_map = {
     0x06: "Late Bloomer + Long",
     0x07: "Late Bloomer + Short",
     0x08: "Open"
-}
+})
 
-skill_map = {
+skill_map = bidict({
     0x5e: "Nanman ties",
     0x63: "Spousal support",
     0x62: "Prayer",
@@ -317,17 +309,16 @@ skill_map = {
     0x02: "Forced march",
     0x01: "Fleetness",
     0x00: "Flying general",
-    0xff: "None",
-}
+})
 
-character_map = {
+character_map = bidict({
     0x00:  "Timid",
     0x01:  "Cool",
     0x02:  "Bold",
     0x03:  "Reckless",
-}
+})
 
-voice_map = {
+voice_map = bidict({
     0x00: "Timid",
     0x01: "Cool",
     0x02: "Bold",
@@ -336,9 +327,9 @@ voice_map = {
     0x05: "Female Bold",
     0x06: "Lu Bu",
     0x07: "Zhuge Liang",
-}
+})
 
-tone_map = {
+tone_map = bidict({
     0x00: "Female Barbarian",
     0x01: "Female Reckless",
     0x02: "Female Dignified",
@@ -355,15 +346,16 @@ tone_map = {
     0x0d: "Courteous",
     0x0e: "Polite",
     0x0f: "Normal",
-}
+})
 
-court_importance_map = {
+court_importance_map = bidict({
     0x00: "Ignore",
     0x01: "Normal",
     0x02: "Important",
-}
+})
 
-weapon_model_map = defaultdict(lambda: "Spear", {
+weapon_model_map = bidict({
+    0x00: "Spear",
     0x01: "Blue Dragon",
     0x02: "Serpent Spear",
     0x03: "Crescent Halberd",
@@ -371,7 +363,7 @@ weapon_model_map = defaultdict(lambda: "Spear", {
     0x05: "Feather Fan",
 })
 
-horse_model_map = defaultdict(lambda: "Normal Horse", {
+horse_model_map = bidict({
     0x01: "Red Hare",
     0x02: "Hex Mark",
     0x03: "Shadow Runner",
@@ -379,72 +371,65 @@ horse_model_map = defaultdict(lambda: "Normal Horse", {
     0x05: "Firestar",
 })
 
-stance_map = defaultdict(lambda: "Normal", {
+stance_map = bidict({
+    0x00: "Normal",
     0x01: "Woman",
     0x02: "Bulky Warrior",
     0x03: "Zhuge Liang"
 })
 
 
-action_map = defaultdict(lambda: "Default", {
-    0x68: "Available",
-    0x20: "Available",
-    0xC8: "Available",
-})
-
-
-affiliation_map = {
+affiliation_map = bidict({
     0x00: "Important",
     0x01: "Normal",
     0x02: "Ignore"
-}
+})
 
-death_map = {
+death_map = bidict({
     0x00: "Natural",
     0x01: "Unnatural",
-}
+})
 
-sex_map = {
+sex_map = bidict({
     0x00: "Male",
     0x01: "Female",
-    0xFF: "None"
-}
+})
 
-affinity_map = {
+affinity_map = bidict({
     0x00: "C",
     0x01: "B",
     0x02: "A",
     0x03: "S",
-}
+})
 
-use_map = {
+use_map = bidict({
     0x00: "Ability",
     0x01: "Performance",
     0x02: "Fame",
     0x03: "Righteousness",
     0x04: "Arbitrary"
-}
+})
 
-debate_map = {
+debate_map = bidict({
     0x00: "Fact",
     0x01: "Logic",
     0x02: "Time"
-}
+})
 
-strategy_map = {
+strategy_map = bidict({
     0x00: "Unify China",
     0x01: "Unify Region",
     0x02: "Unify Province",
     0x03: "Passive",
-}
+})
 
-campaign_map = {
+campaign_map = bidict({
     0x00: "Countryside",
     0x01: "Impromptu Strategy",
     0x02: "Sea is Home"
-}
+})
 
-item_type_map = {
+item_type_map = bidict({
     0x00: "Elite Horse",
     0x01: "Sword",
     0x02: "Long Spear",
@@ -453,10 +438,9 @@ item_type_map = {
     0x05: "Writings",
     0x06: "Imperial Seal",
     0x07: "Bronze Pheasant",
-    0xFF: "None",
-}
+})
 
-title_map = {
+title_map = bidict({
     0x00: "Emperor",
     0x01: "Regent",
     0x02: "Duke",
@@ -467,10 +451,9 @@ title_map = {
     0x07: "Governor",
     0x08: "Lt. Governor",
     0x09: "None",
-    0xFF: "None",
-}
+})
 
-specialty_options = {
+specialty_options = bidict({
     0: "Large City",
     1: "Spears",
     2: "Pikes",
@@ -478,7 +461,7 @@ specialty_options = {
     4: "Horses",
     5: "Weaponry",
     6: "Navy"
-}
+})
 
 specialty_hex = [int(n, 16) for n in [
     '000000000000',
@@ -490,38 +473,38 @@ specialty_hex = [int(n, 16) for n in [
     '000000000001'
 ]]
 
-guilecards_values = {
+guilecards_values = bidict({
     0x00: "None",
     0x08: "Yell",
     0x10: "Reflect",
     0x20: "Ignore",
     0x40: "Calm",
     0x80: "Frenzy",
-}
+})
 
-gamemode_map = {
+gamemode_map = bidict({
     0x00: "Normal",
     0x01: "Rise of Heroes"
-}
+})
 
 
-virtuedesire_map = {
+virtuedesire_map = bidict({
     0x00: "Very Low",
     0x01: "Low",
     0x02: "Normal",
     0x03: "High",
     0x04: "Very High"
-}
+})
 
-rankselection_map = {
+rankselection_map = bidict({
     0x00: "Stats",
     0x01: "Results",
     0x02: "Deeds",
     0x03: "Virtue",
     0x04: "Nepotism"
-}
+})
 
-col_map = {
+col_map = bidict({
     'rank': officer_ranks_map,
     'status': officer_status_map,
     'title': title_map,
@@ -553,7 +536,7 @@ col_map = {
     'virtue': virtuedesire_map,
     'desire': virtuedesire_map,
     'rankselection': rankselection_map
-}
+})
 
 officer_columns = [
     'strategist',
@@ -585,16 +568,16 @@ research_labels = [
 
 research_level_values = [0x0, 0x1, 0x3, 0x7, 0xf]
 
-conquer_region_map = {
+conquer_region_map = bidict({
     0x00: "Hebei (Northern China)",
     0x01: "Zhongyuan (Central Plains)",
     0x02: "Xibei (Northwest)",
     0x03: "Jiangnan (Jing and Yang Provinces)",
     0x04: "Bashu (Yi Province)",
     0x05: "Nanzhong (Yunnan and Jianning)",
-}
+})
 
-conquer_province_map = {
+conquer_province_map = bidict({
     0x00: "You Province (Xiangping, Beiping, Ji)",
     0x01: "Ji & Bing Province (Nanpi, Pingyuan, Jinyang, Ye)",
     0x02: "Qing & Xu Province (Beihai, Xiapi, Xiaopei, Shouchun)",
@@ -607,9 +590,9 @@ conquer_province_map = {
     0x09: "Jingnan (Jiangling, Changsha, Wuling, Guiyang, Lingling)",
     0x0A: "Yi Province (Yong'an, Hanzhong, Zitong, Jiangzhou, Chengdu)",
     0x0B: "Nanzhong (Jianning, Yunnan)",
-}
+})
 
-force_behaviour_map = {
+force_behaviour_map = bidict({
     0x00: "Conquer China",
     0x01: "Conquer Region",
     0x02: "Conquer Province",
@@ -617,9 +600,9 @@ force_behaviour_map = {
     0x04: "Unknown_1",
     0x05: "Unknown_2",
     0xFF: "Unused"
-}
+})
 
-district_behaviour_map = {
+district_behaviour_map = bidict({
     0x00: "Destroy Force",
     0x01: "Conquer Region",
     0x02: "Conquer Province",
@@ -627,35 +610,35 @@ district_behaviour_map = {
     0x04: "Passive",
     0x05: "Protect the Emperor",
     0xFF: "Unused"
-}
+})
 
-specific_behaviour_map = {
+specific_behaviour_map = bidict({
     0x00: "Sustain Armaments",
     0x01: "Sustain Interior Affairs",
     0x02: "Assure Human Resources",
     0x03: "Conquer City",
     0x04: "Diplomacy",
     0x05: "Emergent Defense"
-}
+})
 
-tribes = {
+tribes = bidict({
     44: "Wuwan",
     42: "Qiang",
     43: "Shanyue",
     45: "Nanman",
     46: "Bandit"
-}
+})
 
-ps2_scenarios = {
+ps2_scenarios = bidict({
     name: offset for offset, name in zip(
         [0x1D3800 + 180224*i for i in range(10)],
         ["Yellow Turbans", "Dong Zhou's Rise", "Rival Warlords", "Clash at Guan Du", "The Three Visits",
          "Liu Bei in Shu", "Nanman Rebellion", "Rise of Heroes", "Lu Bu Campaign", "Power Struggle", "Country Basics", ])
-}
+})
 # | {
 #     name: offset for offset, name in zip(
 #         [0x3FC808 + 118800*i for i in range(14)],
 #         ["Military Basics", "Going to Battle", "Traps & Facilities", "Techniques",
 #          "Capturing Cheng Du", "Hunting Dong Zhuo", "The Turbans' End", "Liu Bei Subjugation", "Guan Du Skirmish",
 #          "Huang Zu", "Mai Castle Escape", "Nanman Rebellion", "Defense of Jie Ting",])
-# }
+# })
