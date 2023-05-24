@@ -535,7 +535,12 @@ col_map = bidict({
     'city': city_map,
     'virtue': virtuedesire_map,
     'desire': virtuedesire_map,
-    'rankselection': rankselection_map
+    'rankselection': rankselection_map,
+    'ldrgrowth': growth_ability_map,
+    'wargrowth': growth_ability_map,
+    'intgrowth': growth_ability_map,
+    'polgrowth': growth_ability_map,
+    'chrgrowth': growth_ability_map,
 })
 
 officer_columns = [

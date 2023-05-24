@@ -12,7 +12,8 @@ class bidict(dict):
         super().__delitem__(key)
         del self.reverse_dict[value]
 
-    def getkey(self, value):
+    def getr(self, value):
+        """Return the key corresponding to the given value"""
         return self.reverse_dict.get(value)
 
     def __hash__(self):

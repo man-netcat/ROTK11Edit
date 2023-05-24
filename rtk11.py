@@ -227,7 +227,7 @@ class ROTKXIGUI(QMainWindow):
         if col_name == "id":
             cell_text = int(cell_data)
         elif col_name == "colour":
-            color = QColor(colour_map[cell_data])
+            color = QColor(colour_map.get(cell_data))
             cell_text = cell_data
             cell_item.setBackground(QBrush(color))
         elif col_name == "specialty":
@@ -238,8 +238,6 @@ class ROTKXIGUI(QMainWindow):
             cell_text = self.get_district_ruler_by_district_id(cell_data)
         elif col_name == "force":
             cell_text = self.get_force_ruler_name_by_force_id(cell_data)
-        elif "growth" in col_name:
-            cell_text = growth_ability_map[cell_data]
         elif col_name in officer_columns:
             cell_text = self.get_officer_name_by_id(cell_data)
         elif col_name == "country":
@@ -251,12 +249,11 @@ class ROTKXIGUI(QMainWindow):
             cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
         elif self.datatypes[table_name][col_name] == "str":
             cell_text = cell_data.replace("\x00", "")
-            cell_item.setTextAlignment(
-                QTextOption.WrapAtWordBoundaryOrAnywhere)
+            cell_item.setTextAlignment(Qt.TextWrapAnywhere | Qt.AlignVCenter)
             cell_item.setTextAlignment(Qt.AlignVCenter)
             cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
-        cell_item.setData(Qt.DisplayRole, cell_text)
 
+        cell_item.setData(Qt.DisplayRole, cell_text)
         return cell_item
 
     def init_table_widget(self, table_name: str):
@@ -334,7 +331,7 @@ class ROTKXIGUI(QMainWindow):
     def get_specialty_value_from_text(self, text: str) -> int:
         """Returns the specialty value given its description.
         """
-        return specialty_options.getkey(text)
+        return specialty_options.getr(text)
 
     def get_force_ruler_name_by_force_id(self, force_id: int) -> str:
         """Return the name of the force ruler given a force id.
@@ -408,11 +405,6 @@ class ROTKXIGUI(QMainWindow):
         if country_name == "None":
             return 0xFF
         return self.country_names().index(country_name)
-
-    def get_reverse_column_mapping(self, col_name: str, text: str):
-        """Returns the inverse mapping for a given column.
-        """
-        return col_map[col_name].getkey(text)
 
     def on_key_pressed(self, event: QKeyEvent):
         """Performs the appropriate action on a key-press event.
@@ -525,7 +517,7 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "force":
             cell_data = self.get_force_id_by_force_ruler_name(cell_text)
         elif "growth" in col_name:
-            cell_data = growth_ability_map.getkey(cell_text)
+            cell_data = growth_ability_map.getr(cell_text)
         elif col_name in officer_columns:
             if cell_text == "Parent":
                 return
@@ -533,7 +525,7 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "country":
             cell_data = self.get_country_id_by_name(cell_text)
         elif col_name in col_map:
-            cell_data = self.get_reverse_column_mapping(col_name, cell_text)
+            cell_data = col_map.get(col_name).getr(cell_text)
         elif self.datatypes[table_name][col_name] == "int":
             cell_data = int(cell_text)
         else:
@@ -553,7 +545,7 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "month":
             self.set_table_data("scenario", 0, Scenario.INGAMEMONTH, cell_data)
 
-    def get_force_ruler_options(self, include_none=True) -> list[str]:
+    def get_force_ruler_options(self, include_none=False) -> list[str]:
         """Returns the list of all force rulers.
         """
         ruler_ids = self.get_values_by_enum(Force.FORCERULER)
@@ -565,7 +557,7 @@ class ROTKXIGUI(QMainWindow):
             ruler_options += ["None"]
         return ruler_options
 
-    def get_district_ruler_options(self, include_none=True) -> list[str]:
+    def get_district_ruler_options(self, include_none=False) -> list[str]:
         """Returns the list of all district rulers for city and gates/ports ownership.
         """
         ruler_ids = self.get_values_by_enum(District.DISTRICTRULER)
@@ -679,11 +671,11 @@ class ROTKXIGUI(QMainWindow):
         elif col_name == "specialty":
             options = specialty_options.values()
         elif col_name == "force":
-            options = self.get_force_ruler_options()
+            options = self.get_force_ruler_options(include_none=True)
         elif col_name == "districtruler":
             options = self.get_officer_names_by_allegiance(data_idx)
         elif col_name in ["allegiance", "district"]:
-            options = self.get_district_ruler_options()
+            options = self.get_district_ruler_options(include_none=True)
         elif col_name in officer_columns:
             options = self.get_officer_options()
         elif col_name == "country":
@@ -855,7 +847,7 @@ class ROTKXIGUI(QMainWindow):
             "goal": (force_behaviour_map, "force", Force.GOAL),
             "target": (district_behaviour_map, "district", District.TARGET),
             "specifictarget": (specific_behaviour_map, "district", District.SPECIFICTARGET)
-        }[col_name]
+        }.get(col_name)
 
         goal_value = self.get_table_data(tablename, row_idx, col_idx)
         behaviour_value, target_value = parse_goal_value(goal_value)
@@ -866,12 +858,12 @@ class ROTKXIGUI(QMainWindow):
             targets = {
                 ("goal", "Conquer Region"): conquer_region_map.values,
                 ("goal", "Conquer Province"): conquer_province_map.values,
-                ("target", "Destroy Force"): lambda: self.get_force_ruler_options(include_none=False),
+                ("target", "Destroy Force"): self.get_force_ruler_options,
                 ("target", "Conquer Region"): conquer_region_map.values,
                 ("target", "Conquer Province"): conquer_province_map.values,
                 ("target", "Conquer City/Gate/Port"): city_map.values,
                 ("specifictarget", "Conquer City"): city_map.values,
-                ("specifictarget", "Diplomacy"): lambda: self.get_force_ruler_options(include_none=False)
+                ("specifictarget", "Diplomacy"): self.get_force_ruler_options
             }.get((col_name, behaviour_text), lambda: [])()
 
             target_combo.clear()
@@ -879,13 +871,13 @@ class ROTKXIGUI(QMainWindow):
             target_combo.setEnabled(bool(targets))
 
         target_text = {
-            ("goal", 0x01): lambda target_value: conquer_region_map[target_value],
-            ("goal", 0x02): lambda target_value: conquer_province_map[target_value],
+            ("goal", 0x01): conquer_region_map.get,
+            ("goal", 0x02): conquer_province_map.get,
             ("target", 0x00): self.get_force_ruler_name_by_force_id,
-            ("target", 0x01): lambda target_value: conquer_region_map[target_value],
-            ("target", 0x02): lambda target_value: conquer_province_map[target_value],
-            ("target", 0x03): lambda target_value: city_map[target_value],
-            ("specifictarget", 0x03): lambda target_value: city_map[target_value],
+            ("target", 0x01): conquer_region_map.get,
+            ("target", 0x02): conquer_province_map.get,
+            ("target", 0x03): city_map.get,
+            ("specifictarget", 0x03): city_map.get,
             ("specifictarget", 0x04): self.get_force_ruler_name_by_force_id
         }.get((col_name, behaviour_value), lambda _: "")(target_value)
 
@@ -912,16 +904,16 @@ class ROTKXIGUI(QMainWindow):
 
         target_text = target_combo.currentText()
         behaviour_text = behaviour_combo.currentText()
-        new_behaviour_value = column_map.getkey(behaviour_text)
+        new_behaviour_value = column_map.getr(behaviour_text)
 
         new_target_value = {
-            ("goal", 0x01): lambda target_text: conquer_region_map.getkey(target_text),
-            ("goal", 0x02): lambda target_text: conquer_province_map.getkey(target_text),
+            ("goal", 0x01): conquer_region_map.getr,
+            ("goal", 0x02): conquer_province_map.getr,
             ("target", 0x00): self.get_force_id_by_force_ruler_name,
-            ("target", 0x01): lambda target_text: conquer_region_map.getkey(target_text),
-            ("target", 0x02): lambda target_text: conquer_province_map.getkey(target_text),
-            ("target", 0x03): lambda target_text: city_map.getkey(target_text),
-            ("specifictarget", 0x03): lambda target_text: city_map.getkey(target_text),
+            ("target", 0x01): conquer_region_map.getr,
+            ("target", 0x02): conquer_province_map.getr,
+            ("target", 0x03): city_map.getr,
+            ("specifictarget", 0x03): city_map.getr,
             ("specifictarget", 0x04): self.get_force_id_by_force_ruler_name
         }.get((col_name, new_behaviour_value), lambda _: 0xF)(target_text)
 
