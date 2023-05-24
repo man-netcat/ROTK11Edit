@@ -349,7 +349,7 @@ tone_map = {
     0x07: "Guan Yu",
     0x08: "Frank",
     0x09: "Dignified",
-    0x0a: "Pompus",
+    0x0a: "Pompous",
     0x0b: "Reckless",
     0x0c: "Humble",
     0x0d: "Courteous",
@@ -504,6 +504,23 @@ gamemode_map = {
     0x01: "Rise of Heroes"
 }
 
+
+virtuedesire_map = {
+    0x00: "Very Low",
+    0x01: "Low",
+    0x02: "Normal",
+    0x03: "High",
+    0x04: "Very High"
+}
+
+rankselection_map = {
+    0x00: "Stats",
+    0x01: "Results",
+    0x02: "Deeds",
+    0x03: "Virtue",
+    0x04: "Nepotism"
+}
+
 col_map = {
     'rank': officer_ranks_map,
     'status': officer_status_map,
@@ -532,7 +549,10 @@ col_map = {
     'death': death_map,
     'sex': sex_map,
     'gamemode': gamemode_map,
-    'city': city_map
+    'city': city_map,
+    'virtue': virtuedesire_map,
+    'desire': virtuedesire_map,
+    'rankselection': rankselection_map
 }
 
 officer_columns = [

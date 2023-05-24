@@ -1173,16 +1173,17 @@ class ROTKXIGUI(QMainWindow):
                 cursor.execute(f"SELECT * FROM {table_name}")
                 col_names = [x[0] for x in cursor.description]
                 table_data = [list(x) for x in cursor.fetchall()]
-                self.table_datas[table_name] = {}
-                self.table_datas[table_name]["data"] = table_data
-                self.table_datas[table_name]["col_names"] = col_names
-                self.table_datas[table_name]["num_rows"] = len(table_data)
+                self.table_datas[table_name] = {
+                    "data": table_data,
+                    "col_names": col_names,
+                    "num_rows": len(table_data)
+                }
 
-            # Initialise table widgets``
-            for table_name in table_names:
-                if table_name == "sqlite_sequence":
-                    continue
-                self.init_table_widget(table_name)
+        # Initialise table widgets``
+        for table_name in table_names:
+            if table_name == "sqlite_sequence":
+                continue
+            self.init_table_widget(table_name)
 
         self.save_file_action.setEnabled(True)
         self.save_as_file_action.setEnabled(True)
