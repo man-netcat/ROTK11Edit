@@ -7,6 +7,10 @@ Currently only supports the English PC release of the game.
 This is made purely by reverse-engineering the binary layout of the scenario files, with the help and documented knowledge of the fine folks at [The Scholars of Shen Zhou](https://the-scholars.com/)
 
 ## Usage
+To install the necessary requirements:
+`python3 -m pip install -r requirements.txt`
+
+To run the application:
 `python3 rtk11.py`
 
 ## Disclaimer
