@@ -1102,6 +1102,10 @@ class ROTKXIGUI(QMainWindow):
                         match_found = True
                         break
 
+                officer_name = self.get_officer_name_by_id(row_idx).lower()
+                if search_text in officer_name:
+                    match_found = True
+
                 table.setRowHidden(row_idx, not match_found)
 
             table.setSortingEnabled(True)
@@ -1144,9 +1148,9 @@ class ROTKXIGUI(QMainWindow):
             bp.parse_file(self.old_scen_path, self.db_path)
             self.datatypes = {
                 tablename: {
-                    col_idx[0]: col_idx[1]
+                    col_name: col_type
                     for section in tabledata["sections"]
-                    for col_idx in section["data"]
+                    for col_name, col_type, col_size in section["data"]
                 }
                 for tablename, tabledata in bp.data.items()
             }
