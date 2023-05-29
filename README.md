@@ -26,3 +26,4 @@ This project does not, and will never contain any copyrighted material from Koei
 
 - Support for the [PUK version available on Steam](https://store.steampowered.com/app/628070)
 - Support for the PS2 version of the game (Possibly also PUK)
+- Support for in-game events
