@@ -23,7 +23,7 @@ To run the application:
 
 As it's WIP, expect plenty of bugs and missing features.
 
-This project does not, and will never contain any copyrighted material from Koei. You will need a copy of the game and its scenario files in order to use this tool.
+This project does not, and will never contain any copyrighted material from Koei. You will need a legally obtained copy of the game and its scenario files in order to use this tool.
 
 ## Roadmap
 
