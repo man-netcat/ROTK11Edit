@@ -12,7 +12,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QWidget
 
-from binary_parser.binary_parser import BinaryParser
+from binary_parser import BinaryParser
 from constants import *
 from enums import *
 
