@@ -10,6 +10,9 @@ This is made purely by reverse-engineering the binary layout of the scenario fil
 To install the necessary requirements:
 `python3 -m pip install -r requirements.txt`
 
+Make sure to have imported the submodules as well:
+`git submodule update --init --recursive`
+
 To run the application:
 `python3 rtk11.py`
 
