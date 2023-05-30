@@ -21,6 +21,10 @@ class Unimplemented(Exception):
     pass
 
 
+def clean(str: str):
+    return str.replace("\x00", "").strip()
+
+
 class SaveThread(QThread):
     """Class representing the save and write-back functionality. Will show a neat progress bar.
     """
@@ -248,7 +252,7 @@ class ROTKXIGUI(QMainWindow):
             cell_text = int(cell_data)
             cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
         elif self.datatypes[table_name][col_name] == "str":
-            cell_text = cell_data.replace("\x00", "")
+            cell_text = clean(cell_data)
             cell_item.setTextAlignment(Qt.TextWrapAnywhere | Qt.AlignVCenter)
             cell_item.setTextAlignment(Qt.AlignVCenter)
             cell_item.setFlags(cell_item.flags() | Qt.ItemIsEditable)
@@ -303,11 +307,6 @@ class ROTKXIGUI(QMainWindow):
         # if self.is_initialized:
         #     print("GET", (table_name, row_idx, col_idx, table_data))
         return table_data
-
-    def get_column_name(self, table_name: str, col_idx: int) -> str:
-        """Returns the name of a column in a table given its index.
-        """
-        return self.table_datas[table_name]["col_names"][col_idx]
 
     def get_num_rows(self, table_name):
         return self.table_datas[table_name]["num_rows"]
@@ -381,7 +380,7 @@ class ROTKXIGUI(QMainWindow):
             "officer", officer_id, Officer.FAMILYNAME)
         officer_givenname = self.get_table_data(
             "officer", officer_id, Officer.GIVENNAME)
-        return (officer_familyname + " " + officer_givenname).replace("\x00", "").strip()
+        return clean(f"{officer_familyname} {officer_givenname}")
 
     def get_officer_id_by_name(self, officer_name: str) -> int:
         """Returns the id of an officer given its name.
@@ -397,7 +396,7 @@ class ROTKXIGUI(QMainWindow):
             return "None"
         elif country_id >= self.get_num_rows("country"):
             return "ERROR"
-        return self.get_table_data("country", country_id, Country.NAME).replace("\x00", "").strip()
+        return clean(self.get_table_data("country", country_id, Country.NAME))
 
     def get_country_id_by_name(self, country_name: int) -> int:
         """Returns the id of a country given its name
@@ -491,7 +490,7 @@ class ROTKXIGUI(QMainWindow):
             familyname = self.get_table_data(
                 "officer", row_idx, Officer.FAMILYNAME)
             new_officer_name = f"{familyname} {item_text}"
-        new_officer_name = new_officer_name.replace("\x00", "")
+        new_officer_name = clean(new_officer_name)
         old_officer_name = self.get_officer_name_by_id(row_idx)
 
         for table_widget in self.table_widgets:
@@ -516,7 +515,7 @@ class ROTKXIGUI(QMainWindow):
         col_idx = cell_item.column()
         table_widget = cell_item.tableWidget()
         table_name = table_widget.objectName()
-        col_name = self.get_column_name(table_name, col_idx)
+        col_name = table_widget.horizontalHeaderItem(col_idx).text()
         cell_text = cell_item.text()
 
         if col_name in ["alliance", "research", "goal", "target", "specifictarget"]:
