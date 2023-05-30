@@ -471,26 +471,38 @@ class ROTKXIGUI(QMainWindow):
             "item", row_idx, Item.OWNERORCITY, ownerorcity_value)
         table_widget.itemChanged.connect(self.on_cell_update)
 
-    def get_items_by_value(self, table_name: str, col_name: str, value: int | str):
+    def get_items_by_value(self, table_name: str, col_idx: str, value: int | str):
         table = self.findChild(QTableWidget, table_name)
-        column_index = table.horizontalHeaderItem(col_name).column()
         return [
-            table.item(row, column_index)
+            table.item(row, col_idx)
             for row in range(table.rowCount())
-            if table.item(row, column_index).text() == str(value)]
+            if table.item(row, col_idx).text() == str(value)]
 
-    def update_officer_name(self, editing_officer_id: int):
-        old_officer_name = self.get_officer_name_by_id(editing_officer_id)
-        new_officer_name = "TODO"
+    def update_officer_name(self, cell_item: QTableWidgetItem, col_name: str):
+        row_idx = cell_item.row()
+        col_idx = cell_item.column()
+        item_text = cell_item.text()
+
+        if col_name == "familyname":
+            givenname = self.get_table_data(
+                "officer", row_idx, Officer.GIVENNAME)
+            new_officer_name = f"{item_text} {givenname}"
+        else:
+            familyname = self.get_table_data(
+                "officer", row_idx, Officer.FAMILYNAME)
+            new_officer_name = f"{familyname} {item_text}"
+        new_officer_name = new_officer_name.replace("\x00", "")
+        old_officer_name = self.get_officer_name_by_id(row_idx)
+
         for table_widget in self.table_widgets:
             table_widget.itemChanged.disconnect(self.on_cell_update)
             table_name = table_widget.objectName()
             for col_idx in range(table_widget.columnCount()):
-                col_name = self.get_column_name(table_name, col_idx)
+                col_name = table_widget.horizontalHeaderItem(col_idx).text()
                 if col_name not in officer_columns:
                     continue
                 items: list[QTableWidgetItem] = self.get_items_by_value(
-                    table_name, col_name, old_officer_name)
+                    table_name, col_idx, old_officer_name)
                 for item in items:
                     item.setText(new_officer_name)
             table_widget.itemChanged.connect(self.on_cell_update)
@@ -535,7 +547,7 @@ class ROTKXIGUI(QMainWindow):
             # Set the other value to None
             self.set_item_owner_city(cell_item, col_name)
         elif col_name in ["givenname", "familyname"]:
-            self.update_officer_name(row_idx, cell_text)
+            self.update_officer_name(cell_item, col_name)
 
         self.set_table_data(table_name, row_idx, col_idx, cell_data)
 
@@ -648,7 +660,7 @@ class ROTKXIGUI(QMainWindow):
         current_table = self.table_widgets[current_tab]
         cell_item = current_table.item(row_idx, col_idx)
         table_name = current_table.objectName()
-        col_name = self.get_column_name(table_name, col_idx)
+        col_name = current_table.horizontalHeaderItem(col_idx).text()
         data_idx = self.get_data_idx_from_table_idx(current_table, row_idx)
 
         if col_name in ["father", "mother"]:
