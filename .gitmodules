@@ -1,7 +1,3 @@
 [submodule "binary_parser"]
 	path = binary_parser
 	url = https://github.com/rickt1998/binary_parser
-
-[submodule "bidict"]
-	path = bidict
-	url = https://github.com/rickt1998/bidict

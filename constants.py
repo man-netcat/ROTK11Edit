@@ -181,18 +181,18 @@ officer_ranks_map = bidict({
     0x41: "Negotiator",
     0x42: "Chief Retainer",
     0x43: "Retainer",
-    0x44: "Officer",
-    0x45: "Officer",
-    0x46: "Officer",
-    0x47: "Officer",
+    0x44: "Officer 1",
+    0x45: "Officer 2",
+    0x46: "Officer 3",
+    0x47: "Officer 4",
     0x48: "E Retainer",
     0x49: "W Retainer",
     0x4a: "Agric. Advisor",
     0x4b: "Vassal",
-    0x4c: "Officer",
-    0x4d: "Officer",
-    0x4e: "Officer",
-    0x4f: "Officer",
+    0x4c: "Officer 5",
+    0x4d: "Officer 6",
+    0x4e: "Officer 7",
+    0x4f: "Officer 8",
     0x50: "None",
 })
 
@@ -504,7 +504,7 @@ rankselection_map = bidict({
     0x04: "Nepotism"
 })
 
-col_map = bidict({
+col_map = {
     'rank': officer_ranks_map,
     'status': officer_status_map,
     'title': title_map,
@@ -541,7 +541,7 @@ col_map = bidict({
     'intgrowth': growth_ability_map,
     'polgrowth': growth_ability_map,
     'chrgrowth': growth_ability_map,
-})
+}
 
 officer_columns = [
     'strategist',

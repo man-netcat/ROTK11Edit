@@ -22,6 +22,7 @@ class Unimplemented(Exception):
 
 
 def clean(str: str):
+    # TODO: Check if values in DB are correctly overwritten
     return str.replace("\x00", "").strip()
 
 
@@ -375,7 +376,7 @@ class ROTKXIGUI(QMainWindow):
         if officer_id == 0xFFFF:
             return "None"
         elif officer_id >= self.get_num_rows("officer"):
-            return "Parent"
+            return "Shared Parent"
         officer_familyname = self.get_table_data(
             "officer", officer_id, Officer.FAMILYNAME)
         officer_givenname = self.get_table_data(
@@ -530,7 +531,7 @@ class ROTKXIGUI(QMainWindow):
         elif "growth" in col_name:
             cell_data = growth_ability_map.getr(cell_text)
         elif col_name in officer_columns:
-            if cell_text == "Parent":
+            if cell_text == "Shared Parent":
                 return
             cell_data = self.get_officer_id_by_name(cell_text)
         elif col_name == "country":
@@ -599,7 +600,6 @@ class ROTKXIGUI(QMainWindow):
     def get_officer_names_by_allegiance(self, district_idx) -> list[str]:
         """Returns a list of officers for the given district idx
         """
-        # TODO: Fix
         editing_force_ruler_id = self.get_table_data(
             'district', district_idx, District.FORCE)
         force_ruler_ids = self.get_values_by_enum(District.FORCE)
@@ -655,12 +655,10 @@ class ROTKXIGUI(QMainWindow):
     def on_cell_selected(self, row_idx: int, col_idx: int):
         """Triggers upon doubleclicking a cell and calls the appropriate function depending on the column.
         """
-        current_tab = self.tab_widget.currentIndex()
-        current_table = self.table_widgets[current_tab]
-        cell_item = current_table.item(row_idx, col_idx)
-        table_name = current_table.objectName()
-        col_name = current_table.horizontalHeaderItem(col_idx).text()
-        data_idx = self.get_data_idx_from_table_idx(current_table, row_idx)
+        table = self.get_current_table()
+        cell_item = table.item(row_idx, col_idx)
+        col_name = table.horizontalHeaderItem(col_idx).text()
+        data_idx = self.get_data_idx_from_table_idx(table, row_idx)
 
         if col_name in ["father", "mother"]:
             if self.select_parent():
@@ -730,9 +728,8 @@ class ROTKXIGUI(QMainWindow):
                     return n
                 n += 1
 
-        current_tab = self.tab_widget.currentIndex()
-        current_table = self.table_widgets[current_tab]
-        current_table.itemChanged.disconnect(self.on_cell_update)
+        table = self.get_current_table()
+        table.itemChanged.disconnect(self.on_cell_update)
 
         parent_sex = Officer.FATHER if col_name == "father" else Officer.MOTHER
 
@@ -803,7 +800,7 @@ class ROTKXIGUI(QMainWindow):
         dialog.setLayout(layout)
 
         if dialog.exec_() != QDialog.Accepted:
-            current_table.itemChanged.connect(self.on_cell_update)
+            table.itemChanged.connect(self.on_cell_update)
             return
 
         selected_officers = [
@@ -831,9 +828,9 @@ class ROTKXIGUI(QMainWindow):
                 "officer", officer_id, parent_sex)
             self.set_table_data(
                 "officer", officer_id, parent_sex, parent_value)
-            cell_item.setText("Parent")
+            cell_item.setText("Shared Parent")
 
-        current_table.itemChanged.connect(self.on_cell_update)
+        table.itemChanged.connect(self.on_cell_update)
 
     def set_behaviour_targets(self, row_idx: int, col_name: str):
         dialog = QDialog(self)
@@ -937,13 +934,10 @@ class ROTKXIGUI(QMainWindow):
         """
 
         def parse_research_value(research_value: int):
-            return [(research_value >> (28-i*4)) & 0x0F for i in range(8)]
+            return [(research_value >> (28 - i * 4)) & 0x0F for i in range(8)]
 
         def create_research_value(research_levels: list[int]):
-            return sum(research_level_values[level] << (28-i*4) for i, level in enumerate(research_levels))
-
-        def on_slider_value_changed(value, slider_value_label=slider_value_label):
-            slider_value_label.setText(str(value))
+            return sum(research_level_values[level] << (28 - i * 4) for i, level in enumerate(research_levels))
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Research Levels")
@@ -970,8 +964,8 @@ class ROTKXIGUI(QMainWindow):
             sliders_layout.addWidget(slider, i, 1)
             sliders_layout.addWidget(slider_value_label, i, 2)
             sliders.append(slider)
-
-            slider.valueChanged.connect(on_slider_value_changed)
+            slider.valueChanged.connect(
+                lambda value: slider_value_label.setText(str(value)))
 
         buttons_layout = self.make_confirmation_buttons(dialog)
 
@@ -1085,15 +1079,21 @@ class ROTKXIGUI(QMainWindow):
         buttons_layout.addWidget(cancel_button)
         return buttons_layout
 
+    def get_current_table(self):
+        """Get the focused table of the current tab widget."""
+        current_tab = self.tab_widget.currentIndex()
+        current_table = self.table_widgets[current_tab]
+        return current_table
+
     def sort_table(self, col_idx: int):
         """Sorts the table in ascending/descending order on a given column.
         """
-        table_widget = self.table_widgets[-1]
+        table = self.get_current_table()
         self.sorting_order = Qt.DescendingOrder if self.sorting_order == Qt.AscendingOrder else Qt.AscendingOrder
-        table_widget.sortItems(col_idx, self.sorting_order)
+        table.sortItems(col_idx, self.sorting_order)
 
         # Update sorting_order attribute
-        self.sorting_order = table_widget.horizontalHeader().sortIndicatorOrder()
+        self.sorting_order = table.horizontalHeader().sortIndicatorOrder()
 
     def filter_table(self):
         """Callback function for filtering the table on a given string input.
@@ -1113,9 +1113,10 @@ class ROTKXIGUI(QMainWindow):
                         match_found = True
                         break
 
-                officer_name = self.get_officer_name_by_id(row_idx).lower()
-                if search_text in officer_name:
-                    match_found = True
+                if not match_found:
+                    officer_name = self.get_officer_name_by_id(row_idx).lower()
+                    if search_text in officer_name:
+                        match_found = True
 
                 table.setRowHidden(row_idx, not match_found)
 
