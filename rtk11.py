@@ -26,36 +26,6 @@ def clean(str: str):
     return str.replace("\x00", "").strip()
 
 
-class SaveThread(QThread):
-    """Class representing the save and write-back functionality. Will show a neat progress bar.
-    """
-    save_progress = pyqtSignal(int)
-
-    def __init__(self, db_path, scen_path, table_datas, file_offset, parentobj=None):
-        super().__init__(parentobj)
-        self.db_path = db_path
-        self.table_datas = table_datas
-        self.file_offset = file_offset
-        self.scen_path = scen_path
-
-    def run(self):
-        progress = 0
-        with connect(self.db_path, isolation_level=None) as conn:
-            for table_name, table_info in self.table_datas.items():
-                table_data = table_info["data"]
-                col_names = table_info["col_names"]
-                placeholders = ",".join(["?"] * len(col_names))
-                col_names_string = ", ".join(col_names)
-                for row_idx in table_data:
-                    conn.execute(
-                        f"REPLACE INTO {table_name} ({col_names_string}) VALUES ({placeholders})", row_idx)
-                    progress += 1
-                    self.save_progress.emit(progress)
-
-        with BinaryParser("rtk11.lyt", encoding="shift-jis", file_offset=self.file_offset) as bp:
-            bp.write_back(self.scen_path, self.db_path)
-
-
 class ROTKXIGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -74,16 +44,10 @@ class ROTKXIGUI(QMainWindow):
         spacer = QWidget(self)
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        def toggle_dynamic_widget():
-            if self.dynamic_widget.isVisible():
-                self.dynamic_widget.hide()
-            else:
-                self.dynamic_widget.show()
-
         # Create a button to toggle the visibility of the dynamic widget
         self.toggle_button = QPushButton("Hide/Show", self)
         self.toggle_button.setMaximumWidth(100)
-        self.toggle_button.clicked.connect(toggle_dynamic_widget)
+        self.toggle_button.clicked.connect(self.toggle_dynamic_widget)
 
         # Add the spacer and button to the toolbar
         self.toolbar.addWidget(spacer)
@@ -98,18 +62,20 @@ class ROTKXIGUI(QMainWindow):
 
         # Add an empty widget to the splitter
         self.dynamic_widget = QWidget(self)
+        self.dynamic_layout = QVBoxLayout(self.dynamic_widget)
         self.splitter.addWidget(self.dynamic_widget)
         self.dynamic_widget.hide()
 
         # Set the splitter as the central widget
         self.setCentralWidget(self.splitter)
 
-        self.table_widgets: list[QTableWidget] = []
+        self.table_widgets = []
         self.table_datas = {}
         self.sorting_order = Qt.AscendingOrder
 
-        self.new_scen_path: str = None
+        self.new_scen_path = None
         self.is_initialized = False
+        self.selection_made = pyqtSignal(int)
 
         self.open_file()
 
@@ -162,6 +128,36 @@ class ROTKXIGUI(QMainWindow):
         self.about_action.triggered.connect(self.show_about)
         self.help_menu.addAction(self.about_action)
 
+    def toggle_dynamic_widget(self):
+        if self.dynamic_widget.isVisible():
+            self.dynamic_widget.hide()
+        else:
+            self.dynamic_widget.show()
+
+    def switch_dynamic_layout(self, layout):
+        # Clear the existing layout of the dynamic widget
+        while self.dynamic_layout.count():
+            item = self.dynamic_layout.takeAt(0)
+            if isinstance(item, QWidgetItem):
+                widget = item.widget()
+                if widget is not None:
+                    widget.setParent(None)
+                    widget.deleteLater()
+            elif isinstance(item, QLayoutItem):
+                sub_layout = item.layout()
+                while sub_layout.count():
+                    sub_item = sub_layout.takeAt(0)
+                    widget = sub_item.widget()
+                    if widget is not None:
+                        widget.setParent(None)
+                        widget.deleteLater()
+
+        # Add the provided layout to the dynamic widget's layout
+        self.dynamic_layout.addLayout(layout)
+
+        # Show the dynamic widget
+        self.dynamic_widget.show()
+
     def select_theme(self):
         def set_light_theme():
             self.setStyleSheet(qdarkstyle.load_stylesheet(
@@ -173,43 +169,30 @@ class ROTKXIGUI(QMainWindow):
                 qt_api="pyqt5", palette=qdarkstyle.DarkPalette))
             self.update()
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Choose Theme")
-
-        main_layout = QVBoxLayout()
-        button_layout = QHBoxLayout()
-
+        # Create buttons for theme selection
         light_button = QPushButton("Light Theme")
         light_button.clicked.connect(set_light_theme)
-        button_layout.addWidget(light_button)
 
         dark_button = QPushButton("Dark Theme")
         dark_button.clicked.connect(set_dark_theme)
-        button_layout.addWidget(dark_button)
 
-        ok_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(lambda: dialog.accept())
-        ok_layout.addWidget(ok_button)
+        # Create layout and add buttons
+        layout = QHBoxLayout()
+        layout.addWidget(light_button)
+        layout.addWidget(dark_button)
 
-        main_layout.addLayout(button_layout)
-        main_layout.addLayout(ok_layout)
-
-        dialog.setLayout(main_layout)
-
-        dialog.exec_()
+        self.switch_dynamic_layout(layout)
 
     def show_about(self):
         about_text = "Available at https://github.com/rickt1998/rtk11edit"
-        text_edit = QTextEdit(self.dynamic_widget)
+        text_edit = QTextEdit()
         text_edit.setPlainText(about_text)
 
         # Add the QTextEdit to the layout of the dynamic widget
-        layout = QVBoxLayout(self.dynamic_widget)
+        layout = QVBoxLayout()
         layout.addWidget(text_edit)
 
-        # Show the dynamic widget
-        self.dynamic_widget.show()
+        self.switch_dynamic_layout(layout)
 
     def init_functions(self):
         self.filter_toolbar = QToolBar(self)
